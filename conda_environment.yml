@@ -1,0 +1,17 @@
+name: generative-audio-inpainting
+channels:
+    - conda-forge
+    - pytorch
+dependencies:
+    - spectrum
+    - python=3.6
+    - tqdm
+    - pytorch
+    - torchvision
+    - cudatoolkit
+    - pip
+    - pip:
+        - notebook
+        - scikit-learn
+    - matplotlib
+    - scipy

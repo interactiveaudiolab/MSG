@@ -84,8 +84,8 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
-dirty_path ='/drive/datasets/MSG/demucs_train_flattened_raw'
-clean_path ='/drive/datasets/MSG/original_train_sources_raw'
+dirty_path ='/drive/datasets/MelGan-Imputation/demucs_train_flattened_raw'
+clean_path ='/drive/datasets/MelGan-Imputation/original_train_sources_raw'
 
 train_dirty = []
 train_clean = []

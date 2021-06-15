@@ -2,10 +2,10 @@ import sys
 
 
 # Path to Pix2Pix directory
-local_path = '/drive/Pix2Pix/'
+local_path = '/drive/MelGan-Imputation/'
 
 # Path to libraries directory
-sys.path.append('/drive/Pix2Pix/libraries')
+sys.path.append('/drive/MelGan-Imputation/libraries')
 
 import os
 import numpy as np

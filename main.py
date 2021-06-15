@@ -41,6 +41,10 @@ from mlp import normalization
 from mlp import utils as mlp
 from mlp.WaveDatasetRaw import MusicDataset
 
+
+np.random.seed(40)
+torch.manual_seed(40)
+
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
 dataset_name = 'MUSDB-18' # name of the dataset
@@ -73,7 +77,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_ensemble/'
+experiment_dir = 'saves_drums/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(

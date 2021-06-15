@@ -39,8 +39,7 @@ from models.unet import *
 from mlp import audio
 from mlp import normalization
 from mlp import utils as mlp
-#from mlp.MelDataset import MusicDataset
-from mlp.WaveDataset import MusicDataset
+from mlp.WaveDatasetRaw import MusicDataset
 
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
@@ -65,7 +64,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 n_mel_channels = 80
 ngf = 32
-n_residual_layers = 3
+n_residual_layers = 6
 
 num_D = 3
 ndf = 16
@@ -85,16 +84,17 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
-dirty_path ='/drive/Pix2Pix/Datasets/demucs_train_flattened'
-clean_path ='/drive/Pix2Pix/Datasets/original_train_sources'
+dirty_path ='/drive/datasets/MSG/demucs_train_flattened_raw'
+clean_path ='/drive/datasets/MSG/original_train_sources_raw'
 
 train_dirty = []
 train_clean = []
 val_dirty = []
 val_clean = []
-dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" not in elem]
+dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" in elem]
+
 for s in dirty_data:
-  if np.random.rand() < .8:
+  if np.random.rand() < .9:
     train_dirty.append(dirty_path + '/' + s)
     train_clean.append(clean_path +'/' + s)
   else:
@@ -110,8 +110,8 @@ nperseg = 256
 
 # ds_valid = MusicDataset(val_clean,val_dirty,44100,44100)
 # ds_train = MusicDataset(train_clean,train_dirty,44100,44100)
-ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
-ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
+ds_valid = MusicDataset(val_dirty, val_clean, 44100,22050)
+ds_train = MusicDataset(train_dirty, train_clean, 44100, 22050)
 
 
 valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=4, shuffle=False)
@@ -154,7 +154,7 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
-        x_t_1 = x_t_1[:, :, :44032]
+        x_t_1 = x_t_1[:, :, :22016]
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 

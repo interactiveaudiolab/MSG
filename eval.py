@@ -11,7 +11,14 @@ import resource
 from tqdm import tqdm
 import nussl
 
+import sys
 
+
+# Path to Pix2Pix directory
+local_path = '/drive/MelGan-Imputation/'
+
+# Path to libraries directory
+sys.path.append('/drive/MelGan-Imputation/libraries')
 
 import torchvision.transforms as transforms
 from torchvision.utils import save_image

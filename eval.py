@@ -45,7 +45,7 @@ save_interval = 20
 log_interval = 100
 
 G1 = GeneratorMel(n_mel_channels, ngf, n_residual_layers)
-G1.load_state_dict(torch.load("[Replace with path to generator]"))
+G1.load_state_dict(torch.load('/drive/MelGan-Imputation/saves_drums_616/300netG.pt'))
 
 def _add_zero_padding(signal, window_length, hop_length):
     """
@@ -80,8 +80,8 @@ def _add_zero_padding(signal, window_length, hop_length):
 
 
 
-clean_path = '[replace with path to clean test set]'
-dirty_path ='[replace with path to dirty test set]'
+dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened_raw'
+clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources_raw'
 
 test_dirty = []
 test_clean = []

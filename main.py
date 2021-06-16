@@ -115,8 +115,8 @@ nperseg = 256
 
 # ds_valid = MusicDataset(val_clean,val_dirty,44100,44100)
 # ds_train = MusicDataset(train_clean,train_dirty,44100,44100)
-ds_valid = MusicDataset(val_dirty, val_clean, 44100,11025)
-ds_train = MusicDataset(train_dirty, train_clean, 44100, 11025)
+ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
+ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
 
 valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=4, shuffle=False)
@@ -197,7 +197,7 @@ for epoch in range(start_epoch, n_epochs):
         #######################
 
         x_pred_t = x_pred_t[:,:,:original_signal_len]
-        
+
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 

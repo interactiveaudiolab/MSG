@@ -97,6 +97,7 @@ val_dirty = []
 val_clean = []
 dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" in elem]
 
+
 for s in dirty_data:
   if np.random.rand() < .9:
     train_dirty.append(dirty_path + '/' + s)
@@ -134,6 +135,38 @@ if start_epoch > 0:
     optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optD.pt").state_dict())
 
 
+
+def _add_zero_padding(signal, window_length, hop_length):
+    """
+    Args:
+        signal:
+        window_length:
+        hop_length:
+    Returns:
+    """
+    original_signal_length = len(signal)
+    overlap = window_length - hop_length
+    num_blocks = np.ceil(len(signal) / hop_length)
+
+    if overlap >= hop_length:  # Hop is less than 50% of window length
+        overlap_hop_ratio = np.ceil(overlap / hop_length)
+
+        before = int(overlap_hop_ratio * hop_length)
+        after = int((num_blocks * hop_length + overlap) - original_signal_length)
+
+        signal = np.pad(signal, (before, after), 'constant', constant_values=(0, 0))
+        extra = overlap
+
+    else:
+        after = int((num_blocks * hop_length + overlap) - original_signal_length)
+        signal = np.pad(signal, (hop_length, after), 'constant', constant_values=(0, 0))
+        extra = window_length
+
+    num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
+    num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
+
+    return signal, num_blocks
+
 results = []
 netG.train()
 netD.train()
@@ -147,6 +180,11 @@ for epoch in range(start_epoch, n_epochs):
       torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
       #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
     for iterno, x_t in enumerate(train_loader):
+        original_signal_len  = x_t[0].shape[1]
+        signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
+        padded = torch.zeros((x_t[0].shape[0],len(signal)))
+        for i in range(len(x_t[0])):
+            padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
         x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0).detach()
@@ -158,7 +196,8 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
-        x_t_1 = x_t_1[:, :, :11008]
+        x_pred_t = x_pred_t[:,:,:original_signal_len]
+        
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 

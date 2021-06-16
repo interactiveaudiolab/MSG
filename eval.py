@@ -36,7 +36,6 @@ from mlp import audio
 from mlp import normalization
 from mlp import utils as mlp
 from mlp.WaveDataset import MusicDataset
-from IPython.display import Audio
 
 
 n_mel_channels = 80
@@ -87,8 +86,8 @@ def _add_zero_padding(signal, window_length, hop_length):
 
 
 
-dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened_raw'
-clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources_raw'
+dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
+clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
 
 test_dirty = []
 test_clean = []

@@ -77,7 +77,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_drums_616/'
+experiment_dir = 'saves_617/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -194,7 +194,7 @@ for epoch in range(start_epoch, n_epochs):
         with torch.no_grad():
             s_pred_t = fft(x_pred_t.detach())
             s_error = F.l1_loss(s_t, s_pred_t).item()
-            
+
         #######################
         # Train Discriminator #
         #######################

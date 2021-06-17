@@ -165,7 +165,7 @@ def _add_zero_padding(signal, window_length, hop_length):
     num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
     num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
 
-    return signal, num_blocks
+    return signal, num_blocks,before,after
 
 results = []
 netG.train()
@@ -181,7 +181,7 @@ for epoch in range(start_epoch, n_epochs):
       #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
     for iterno, x_t in enumerate(train_loader):
         original_signal_len  = x_t[0].shape[1]
-        signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
+        signal,_, before, after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
         padded = torch.zeros((x_t[0].shape[0],len(signal)))
         for i in range(len(x_t[0])):
             padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
@@ -196,7 +196,7 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
-        x_pred_t = x_pred_t[:,:,:original_signal_len]
+        x_pred_t = x_pred_t[:,:,before:len(signal)-after]
 
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())

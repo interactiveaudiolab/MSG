@@ -109,15 +109,16 @@ start = 7
 
 fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 
-clean1 = np.array([])
-noisy1 = np.array([])
-aud1 = np.array([])
+
 
 sdr_noisy = []
 sdr_generated = []
 
 with torch.no_grad():
   for start in range(50):
+    clean1 = np.array([])
+    noisy1 = np.array([])
+    aud1 = np.array([])
     for i in range(7*start, 7*start+7):
       n,c = ds_test[i]
       clean1 = np.concatenate((clean1,c))

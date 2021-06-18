@@ -183,12 +183,10 @@ for epoch in range(start_epoch, n_epochs):
         original_signal_len  = x_t[0].shape[1]
         signal,_, before, after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
         padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        padded1 = torch.zeros((x_t[1].shape[0],len(signal)))
         for i in range(len(x_t[0])):
             padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
-            padded1[i] = torch.from_numpy(_add_zero_padding(x_t[1][i].numpy(),1024,256)[0])
         x_t_0 = padded.unsqueeze(1).float().cuda()
-        x_t_1 = padded1.unsqueeze(1).float().cuda()
+        x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0).detach()
         x_pred_t = netG(s_t.cuda())
         with torch.no_grad():

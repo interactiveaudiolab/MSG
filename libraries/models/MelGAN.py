@@ -125,9 +125,10 @@ class GeneratorMel(nn.Module):
 
         self.model = nn.Sequential(*model)
         self.apply(weights_init)
+        self.output = nn.Linear(45824,44100)
 
     def forward(self, x):
-        return self.model(x)
+        return self.output(self.model(x))
 
 
 class NLayerDiscriminator(nn.Module):

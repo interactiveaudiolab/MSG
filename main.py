@@ -191,7 +191,7 @@ for epoch in range(start_epoch, n_epochs):
         x_pred_t = netG(s_t.cuda())
         with torch.no_grad():
             s_pred_t = fft(x_pred_t.detach())
-            s_error = F.l1_loss(s_t, s_pred_t).item()
+            s_error = F.l1_loss(s_t, s_t).item()
 
         #######################
         # Train Discriminator #

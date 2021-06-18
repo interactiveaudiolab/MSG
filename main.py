@@ -237,10 +237,6 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
-        if steps % check_interval == 0:
-            train_disc = not NaiveHeuristic(d_100,g_100)
-            d_100 = []
-            g_100 = []
 
         #x_pred_t = x_pred_t[:,:,before:len(signal)-after]
         x_t_1 = x_t_1[:,:,:44032]
@@ -253,7 +249,8 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        if train_disc:
+        
+        if steps%5 == 0:
             netD.zero_grad()
             loss_D.backward()
             optD.step()

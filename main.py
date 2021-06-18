@@ -49,6 +49,8 @@ skip_iters = 5
 heuristic_threshold = 0.5
 heuristic_check_interval = 4
 
+check_interval = 100
+
 # StyleGAN heuristics are aggregated and checked once every heuristic_check_interval steps. They were initially designed to augment
 # generator strength but since they measure discriminator overfitting we can probably use the same values to cripple our discriminator
 def StyleGan2_rt(values):
@@ -71,11 +73,11 @@ def StyleGan2_rv(DTrain, DValid, DGen):
 
 
 # Naive Overfitting Heuristic
-def NaiveHeuristic(last_epoch):
+def NaiveHeuristic(d_epoch, g_epoch):
     """
     Measure the discriminator loss over an entire epoch, restrict its training for the next epoch.
     """
-    if np.mean(last_epoch)<heuristic_threshold:
+    if np.abs(np.mean(d_epoch)/np.mean(g_epoch)) < .4 :
         return True
     return False
     
@@ -201,7 +203,9 @@ def _add_zero_padding(signal, window_length, hop_length):
     num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
 
     return signal, num_blocks,before,after
-
+d_100 = []
+g_100 = []
+train_disc = True
 results = []
 netG.train()
 netD.train()
@@ -215,24 +219,31 @@ for epoch in range(start_epoch, n_epochs):
       torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
       #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
     for iterno, x_t in enumerate(train_loader):
-        original_signal_len  = x_t[0].shape[1]
-        signal,_, before, after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
-        padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        for i in range(len(x_t[0])):
-            padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
-        x_t_0 = padded.unsqueeze(1).float().cuda()
+        #original_signal_len  = x_t[0].shape[1]
+        #signal,_, before, after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
+        #padded = torch.zeros((x_t[0].shape[0],len(signal)))
+        #for i in range(len(x_t[0])):
+            #padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
+        x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0).detach()
         x_pred_t = netG(s_t.cuda())
         with torch.no_grad():
+            comp_t = fft(x_t_1).detach()
             s_pred_t = fft(x_pred_t.detach())
-            s_error = F.l1_loss(s_t, s_t).item()
+            s_error = F.l1_loss(comp_t, s_pred_t).item()
 
         #######################
         # Train Discriminator #
         #######################
 
+        if steps % check_interval == 0:
+            train_disc = not NaiveHeuristic(d_100,g_100)
+            d_100 = []
+            g_100 = []
+
         #x_pred_t = x_pred_t[:,:,before:len(signal)-after]
+        x_t_1 = x_t_1[:,:,:44032]
 
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
@@ -242,9 +253,10 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        netD.zero_grad()
-        loss_D.backward()
-        optD.step()
+        if train_disc:
+            netD.zero_grad()
+            loss_D.backward()
+            optD.step()
         ###################
         # Train Generator #
         ###################
@@ -262,6 +274,8 @@ for epoch in range(start_epoch, n_epochs):
         netG.zero_grad()
         (loss_G + lambda_feat * loss_feat).backward()
         optG.step()
+        d_100.append(loss_D.item())
+        g_100.append(loss_G.item())
         ######################
         # Update tensorboard #
         ######################

@@ -45,6 +45,41 @@ from mlp.WaveDatasetRaw import MusicDataset
 np.random.seed(0)
 torch.manual_seed(0)
 
+skip_iters = 5
+heuristic_threshold = 0.5
+heuristic_check_interval = 4
+
+# StyleGAN heuristics are aggregated and checked once every heuristic_check_interval steps. They were initially designed to augment
+# generator strength but since they measure discriminator overfitting we can probably use the same values to cripple our discriminator
+def StyleGan2_rt(values):
+    rt = np.mean(np.sign(values))
+    if rt>heuristic_threshold:
+        return True
+    return False
+
+def StyleGan2_rv(DTrain, DValid, DGen):
+    """
+    DTrain: list of losses recorded for the discriminator from the training set over the last heuristic_check_interval training steps
+    DValid: list of losses recorded for the discriminator from the validation set over the last heuristic_check_interval training steps
+    DGen: list of losses recorded for the discriminator from the generator output over the last heuristic_check_interval training steps
+    
+    """
+    rv = (np.mean(DTrain)-np.mean(DValid))/(np.mean(DTrain)-np.mean(DGen))
+    if rv>heuristic_threshold:
+        return True
+    return False
+
+
+# Naive Overfitting Heuristic
+def NaiveHeuristic(last_epoch):
+    """
+    Measure the discriminator loss over an entire epoch, restrict its training for the next epoch.
+    """
+    if np.mean(last_epoch)<heuristic_threshold:
+        return True
+    return False
+    
+
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
 dataset_name = 'MUSDB-18' # name of the dataset

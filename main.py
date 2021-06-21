@@ -250,7 +250,7 @@ for epoch in range(start_epoch, n_epochs):
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
         
-        if steps%5 == 0:
+        if steps%2 == 0:
             netD.zero_grad()
             loss_D.backward()
             optD.step()

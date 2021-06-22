@@ -77,7 +77,7 @@ def NaiveHeuristic(d_epoch, g_epoch):
     """
     Measure the discriminator loss over an entire epoch, restrict its training for the next epoch.
     """
-    if np.abs(np.mean(d_epoch)/np.mean(g_epoch)) < .4 :
+    if np.abs(np.mean(d_epoch)/np.mean(g_epoch)) < .7:
         return True
     return False
     
@@ -114,7 +114,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_619/'
+experiment_dir = 'saves_622/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -237,6 +237,10 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
+        if steps % check_interval == 0 and steps!=0:
+            train_disc = not NaiveHeuristic(d_100,g_100)
+            d_100 = []
+            g_100 = []
 
         #x_pred_t = x_pred_t[:,:,before:len(signal)-after]
         x_t_1 = x_t_1[:,:,:44032]
@@ -249,8 +253,7 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        
-        if steps%2 == 0:
+        if train_disc:
             netD.zero_grad()
             loss_D.backward()
             optD.step()
@@ -284,4 +287,3 @@ for epoch in range(start_epoch, n_epochs):
         steps += 1
 
         sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] ')
-

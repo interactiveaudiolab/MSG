@@ -39,7 +39,7 @@ from models.unet import *
 from mlp import audio
 from mlp import normalization
 from mlp import utils as mlp
-from mlp.WaveDatasetRaw import MusicDataset
+from mlp.WaveDataset import MusicDataset
 
 
 np.random.seed(40)
@@ -68,16 +68,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 n_mel_channels = 80
 ngf = 32
-n_residual_layers = 6
+n_residual_layers = 3
 
 num_D = 3
 ndf = 16
-n_layers_D = 6
+n_layers_D = 4
 downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_drums_616/'
+experiment_dir = 'saves_623'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -88,8 +88,8 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
-dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened_raw'
-clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources_raw'
+dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
+clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
 
 train_dirty = []
 train_clean = []
@@ -190,14 +190,16 @@ for epoch in range(start_epoch, n_epochs):
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0).detach()
         x_pred_t = netG(s_t.cuda())
+        
         with torch.no_grad():
             s_pred_t = fft(x_pred_t.detach())
             s_error = F.l1_loss(s_t, s_pred_t).item()
         #######################
         # Train Discriminator #
         #######################
-
-        x_pred_t = x_pred_t[:,:,before,len(signal)-after]
+        
+        x_pred_t = x_pred_t[:,:,before:len(signal)-after]
+        
 
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())

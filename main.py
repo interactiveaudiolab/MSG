@@ -105,16 +105,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 n_mel_channels = 80
 ngf = 32
-n_residual_layers = 3
+n_residual_layers = 6
 
 num_D = 3
 ndf = 16
-n_layers_D = 4
+n_layers_D = 6
 downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_622/'
+experiment_dir = 'saves_623'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(

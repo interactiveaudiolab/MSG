@@ -68,16 +68,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 n_mel_channels = 80
 ngf = 32
-n_residual_layers = 3
+n_residual_layers = 6
 
 num_D = 3
 ndf = 16
-n_layers_D = 4
+n_layers_D = 6
 downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_drums/'
+experiment_dir = 'saves_623'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -114,8 +114,8 @@ nperseg = 256
 
 # ds_valid = MusicDataset(val_clean,val_dirty,44100,44100)
 # ds_train = MusicDataset(train_clean,train_dirty,44100,44100)
-ds_valid = MusicDataset(val_dirty, val_clean, 44100,11025)
-ds_train = MusicDataset(train_dirty, train_clean, 44100, 11025)
+ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
+ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
 
 valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=4, shuffle=False)
@@ -158,7 +158,7 @@ for epoch in range(start_epoch, n_epochs):
         # Train Discriminator #
         #######################
 
-        x_t_1 = x_t_1[:, :, :11008]
+        x_t_1 = x_t_1[:, :, :44032]
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 

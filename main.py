@@ -39,7 +39,7 @@ from models.unet import *
 from mlp import audio
 from mlp import normalization
 from mlp import utils as mlp
-from mlp.WaveDatasetRaw import MusicDataset
+from mlp.WaveDataset import MusicDataset
 
 
 np.random.seed(0)
@@ -105,11 +105,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 n_mel_channels = 80
 ngf = 32
-n_residual_layers = 6
+n_residual_layers = 3
 
 num_D = 3
 ndf = 16
-n_layers_D = 6
+n_layers_D = 4
 downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
@@ -125,8 +125,8 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
-dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened_raw'
-clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources_raw'
+dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
+clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
 
 train_dirty = []
 train_clean = []
@@ -203,9 +203,7 @@ def _add_zero_padding(signal, window_length, hop_length):
     num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
 
     return signal, num_blocks,before,after
-d_100 = []
-g_100 = []
-train_disc = True
+
 results = []
 netG.train()
 netD.train()
@@ -219,15 +217,17 @@ for epoch in range(start_epoch, n_epochs):
       torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
       #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
     for iterno, x_t in enumerate(train_loader):
-        #original_signal_len  = x_t[0].shape[1]
-        #signal,_, before, after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
-        #padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        #for i in range(len(x_t[0])):
-            #padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
-        x_t_0 = x_t[0].unsqueeze(1).float().cuda()
+        original_signal_len  = x_t[0].shape[1]
+        signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
+        _,_,before,after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
+        padded = torch.zeros((x_t[0].shape[0],len(signal)))
+        for i in range(len(x_t[0])):
+            padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
+        x_t_0 = padded.unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0).detach()
         x_pred_t = netG(s_t.cuda())
+        
         with torch.no_grad():
             comp_t = fft(x_t_1).detach()
             s_pred_t = fft(x_pred_t.detach())
@@ -236,14 +236,9 @@ for epoch in range(start_epoch, n_epochs):
         #######################
         # Train Discriminator #
         #######################
-
-        if steps % check_interval == 0 and steps!=0:
-            train_disc = not NaiveHeuristic(d_100,g_100)
-            d_100 = []
-            g_100 = []
-
-        #x_pred_t = x_pred_t[:,:,before:len(signal)-after]
-        x_t_1 = x_t_1[:,:,:44032]
+        
+        x_pred_t = x_pred_t[:,:,before:len(signal)-after]
+        
 
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
@@ -274,8 +269,6 @@ for epoch in range(start_epoch, n_epochs):
         netG.zero_grad()
         (loss_G + lambda_feat * loss_feat).backward()
         optG.step()
-        d_100.append(loss_D.item())
-        g_100.append(loss_G.item())
         ######################
         # Update tensorboard #
         ######################

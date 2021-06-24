@@ -96,8 +96,6 @@ img_width = 128 # size of image width
 channels = 1 # number of image channels
 sample_interval = 100 # interval between sampling of images from generators
 checkpoint_interval = 100 # interval between model checkpoints
-n_layers_D = 4
-num_D = 4
 
 cuda = True if torch.cuda.is_available() else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -114,7 +112,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_623'
+experiment_dir = 'saves_624/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -209,38 +207,37 @@ netG.train()
 netD.train()
 dis_train = 0
 steps = 0
+sdr = SISDRLoss()
 for epoch in range(start_epoch, n_epochs):
-    if epoch % 100 == 0 and epoch != start_epoch:
+    if (epoch+1) % 100 == 0 and epoch != start_epoch:
       torch.save(netG.state_dict(), local_path + experiment_dir +  str(epoch) + "netG.pt")
       torch.save(netD.state_dict(), local_path + experiment_dir +  str(epoch) + "netD.pt")
       torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
       torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
       #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
     for iterno, x_t in enumerate(train_loader):
-        original_signal_len  = x_t[0].shape[1]
-        signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
-        _,_,before,after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
-        padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        for i in range(len(x_t[0])):
-            padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
-        x_t_0 = padded.unsqueeze(1).float().cuda()
+        #original_signal_len  = x_t[0].shape[1]
+        #signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
+        #_,_,before,after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
+        #padded = torch.zeros((x_t[0].shape[0],len(signal)))
+        #for i in range(len(x_t[0])):
+            #padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
+        x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
-        s_t = fft(x_t_0).detach()
-        x_pred_t = netG(s_t.cuda())
+        s_t = fft(x_t_0)
+        x_pred_t = netG(s_t)
         
         with torch.no_grad():
-            comp_t = fft(x_t_1).detach()
             s_pred_t = fft(x_pred_t.detach())
-            s_error = F.l1_loss(comp_t, s_pred_t).item()
-
+            s_test = fft(x_t_1.detach())
+            s_error = F.l1_loss(s_test, s_pred_t).item()
         #######################
         # Train Discriminator #
         #######################
         
-        x_pred_t = x_pred_t[:,:,before:len(signal)-after]
-        
+        sdr_loss = sdr(x_pred_t.squeeze(0).unsqueeze(2), x_t_1.squeeze(0).unsqueeze(2))
 
-        D_fake_det = netD(x_pred_t.cuda().detach())
+        D_fake_det = netD(x_pred_t.cuda())
         D_real = netD(x_t_1.cuda())
 
         loss_D = 0
@@ -248,10 +245,9 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        if train_disc:
-            netD.zero_grad()
-            loss_D.backward()
-            optD.step()
+        netD.zero_grad()
+        loss_D.backward()
+        optD.step()
         ###################
         # Train Generator #
         ###################
@@ -272,11 +268,12 @@ for epoch in range(start_epoch, n_epochs):
         ######################
         # Update tensorboard #
         ######################
-        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error]]
+        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error,sdr_loss]]
         writer.add_scalar("loss/discriminator", costs[-1][0], steps)
         writer.add_scalar("loss/generator", costs[-1][1], steps)
         writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
         writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
+        writer.add_scalar("loss/sdr_reconstruction", costs[-1][4], steps)
         steps += 1
 
         sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] ')

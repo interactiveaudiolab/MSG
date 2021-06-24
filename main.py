@@ -202,7 +202,7 @@ for epoch in range(start_epoch, n_epochs):
         
         sdr_loss = sdr(x_pred_t.squeeze(0).unsqueeze(2), x_t_1.squeeze(0).unsqueeze(2))
 
-        D_fake_det = netD(x_pred_t.cuda())
+        D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 
         loss_D = 0

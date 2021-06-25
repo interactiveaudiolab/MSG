@@ -112,7 +112,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_624/'
+experiment_dir = 'saves_625/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -227,15 +227,15 @@ for epoch in range(start_epoch, n_epochs):
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t)
         
-        with torch.no_grad():
-            s_pred_t = fft(x_pred_t.detach())
-            s_test = fft(x_t_1.detach())
-            s_error = F.l1_loss(s_test, s_pred_t).item()
+        s_pred_t = fft(x_pred_t.detach())
+        s_test = fft(x_t_1.detach())
+        s_error = F.l1_loss(s_test, s_pred_t)
         #######################
         # Train Discriminator #
         #######################
-        
-        sdr_loss = sdr(x_pred_t.squeeze(0).unsqueeze(2), x_t_1.squeeze(0).unsqueeze(2))
+        sdr = SISDRLoss()
+
+        sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
@@ -263,17 +263,18 @@ for epoch in range(start_epoch, n_epochs):
             for j in range(len(D_fake[i]) - 1):
                 loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
         netG.zero_grad()
-        (loss_G + lambda_feat * loss_feat).backward()
+        (loss_G + lambda_feat * loss_feat + .25*s_error).backward()
         optG.step()
         ######################
         # Update tensorboard #
         ######################
-        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error,sdr_loss]]
+        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss]]
         writer.add_scalar("loss/discriminator", costs[-1][0], steps)
         writer.add_scalar("loss/generator", costs[-1][1], steps)
         writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
         writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
-        writer.add_scalar("loss/sdr_reconstruction", costs[-1][4], steps)
+        writer.add_scalar("loss/sdr_loss", costs[-1][4], steps)
         steps += 1
 
-        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] ')
+        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] [SDR Loss: {costs[-1][4]:.4f}]')
+

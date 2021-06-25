@@ -177,6 +177,46 @@ class NLayerDiscriminator(nn.Module):
             x = layer(x)
             results.append(x)
         return results
+    
+    
+class SpecDiscriminator(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_conv = WNConv1d(in_channels, 80, 1)
+        self.in_channels = in_channels
+        self.layers = nn.ModuleList(
+            [
+                WNConv1d(80, 80, 5, 1, 2, padding_mode="reflect"),
+                WNConv1d(80, 160, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(160, 320, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(320, 640, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(640, 1280, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(1280, 1280, 5, 1, 2, padding_mode="reflect"),
+            ]
+        )
+        self.output = WNConv1d(1280, 1, 3, 1, 1)
+        
+    def spectrogram(self, x):
+        x = AudioSignal(x, 44100)  # Uses AudioSignal from nussl 2.0
+        window_length = (self.in_channels - 1) * 2
+        hop_length = window_length // 4
+        x.stft(window_length, hop_length)
+        eps = 1e-5
+        log_magnitude = (x.magnitude.pow(2) + eps).log10()
+        _, _, nf, nt = x.magnitude.shape
+        return log_magnitude.reshape(-1, nf, nt) * 0.1
+    
+    def forward(self, x):
+        s = self.spectrogram(x)
+        fmaps = []
+        s = self.in_conv(s)
+        fmaps.append(s)
+        for i, layer in enumerate(self.layers):
+            s = F.leaky_relu(layer(s), 0.2)
+            fmaps.append(s)
+        fmaps.append(self.output(s))
+        return fmaps
+
 
 
 class DiscriminatorMel(nn.Module):

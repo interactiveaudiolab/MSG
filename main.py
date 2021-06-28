@@ -269,11 +269,12 @@ for epoch in range(start_epoch, n_epochs):
                 loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
         if epoch > pretrain_epoch:
             netG.zero_grad()
-            (loss_G + lambda_feat * loss_feat + .25*s_error).backward()
+            (loss_G + lambda_feat * loss_feat).backward()
             optG.step()
         else: 
             netG.zero_grad()
             s_error.backward()
+            torch.nn.utils.clip_grad_norm_(netG.parameters(), 50)
             optG.step()
         ######################
         # Update tensorboard #

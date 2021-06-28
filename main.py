@@ -85,12 +85,12 @@ def NaiveHeuristic(d_epoch, g_epoch):
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
 dataset_name = 'MUSDB-18' # name of the dataset
-batch_size = 4 # size of the batches
+batch_size = 16 # size of the batches
 lr = 0.0001 # adam: learning rate
 b1 = 0.5 # adam: decay of first order momentum of gradient
 b2 = 0.9 # adam: decay of first order momentum of gradient
 decay_epoch = 100 # epoch from which to start lr decay
-n_cpu = 4 # number of cpu threads to use during batch generation
+n_cpu = 1 # number of cpu threads to use during batch generation
 img_height = 128 # size of image height
 img_width = 128 # size of image width
 channels = 1 # number of image channels
@@ -112,7 +112,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_625/'
+experiment_dir = 'saves_626/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
 netD = DiscriminatorMel(
@@ -130,7 +130,7 @@ train_dirty = []
 train_clean = []
 val_dirty = []
 val_clean = []
-dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" in elem]
+dirty_data = [elem for elem in os.listdir(dirty_path) if "bass" in elem]
 
 
 for s in dirty_data:
@@ -154,8 +154,9 @@ ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
 ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
 
-valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=4, shuffle=False)
-train_loader = DataLoader(ds_train, batch_size=bs, num_workers=4, shuffle=True)
+valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=n_cpu, shuffle=False)
+train_loader = DataLoader(ds_train, batch_size=bs, num_workers=n_cpu, shuffle=True)
+
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -164,10 +165,10 @@ costs = []
 start = time.time()
 
 if start_epoch > 0:
-    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netG.pt"))
-    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netD.pt"))
-    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optG.pt").state_dict())
-    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optD.pt").state_dict())
+    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netG.pt"))
+    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netD.pt"))
+    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optG.pt").state_dict())
+    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optD.pt").state_dict())
 
 
 

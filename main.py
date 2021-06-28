@@ -84,6 +84,7 @@ def NaiveHeuristic(d_epoch, g_epoch):
 
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
+pretrain_epoch = 100
 dataset_name = 'MUSDB-18' # name of the dataset
 batch_size = 16 # size of the batches
 lr = 0.0001 # adam: learning rate
@@ -236,8 +237,10 @@ for epoch in range(start_epoch, n_epochs):
         #######################
         sdr = SISDRLoss()
 
+
         sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
+        
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 
@@ -246,9 +249,10 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        netD.zero_grad()
-        loss_D.backward()
-        optD.step()
+        if epoch > pretrain_epoch:
+            netD.zero_grad()
+            loss_D.backward()
+            optD.step()
         ###################
         # Train Generator #
         ###################
@@ -263,9 +267,14 @@ for epoch in range(start_epoch, n_epochs):
         for i in range(num_D):
             for j in range(len(D_fake[i]) - 1):
                 loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
-        netG.zero_grad()
-        (loss_G + lambda_feat * loss_feat + .25*s_error).backward()
-        optG.step()
+        if epoch > pretrain_epoch:
+            netG.zero_grad()
+            (loss_G + lambda_feat * loss_feat + .25*s_error).backward()
+            optG.step()
+        else: 
+            netG.zero_grad()
+            s_error.backward()
+            optG.step()
         ######################
         # Update tensorboard #
         ######################

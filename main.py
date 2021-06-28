@@ -229,8 +229,8 @@ for epoch in range(start_epoch, n_epochs):
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t)
         
-        s_pred_t = fft(x_pred_t.detach())
-        s_test = fft(x_t_1.detach())
+        s_pred_t = fft(x_pred_t)
+        s_test = fft(x_t_1)
         s_error = F.l1_loss(s_test, s_pred_t)
         #######################
         # Train Discriminator #

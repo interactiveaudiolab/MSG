@@ -86,9 +86,10 @@ class ResnetBlock(nn.Module):
 
 
 class GeneratorMel(nn.Module):
-    def __init__(self, input_size, ngf, n_residual_layers):
+    def __init__(self, input_size, ngf, n_residual_layers,skip_cxn=False):
         super().__init__()
         ratios = [8, 8, 2, 2]
+        self.skip_cxn = skip_cxn
         self.hop_length = np.prod(ratios)
         mult = int(2 ** len(ratios))
 
@@ -127,7 +128,14 @@ class GeneratorMel(nn.Module):
         self.apply(weights_init)
         
     def forward(self, x):
-        return center_trim(self.model(x),44100)
+        
+
+        imputed = center_trim(self.model(x),44100)
+
+        if self.skip_cxn:
+            return imputed
+        else:
+            return imputed + src_est
 
 def center_trim(tensor, reference):
     """

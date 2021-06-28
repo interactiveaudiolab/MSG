@@ -42,8 +42,8 @@ from mlp import utils as mlp
 from mlp.WaveDataset import MusicDataset
 
 
-np.random.seed(40)
-torch.manual_seed(40)
+np.random.seed(0)
+torch.manual_seed(0)
 
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
@@ -77,7 +77,7 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_624/'
+experiment_dir = 'saves_626_skip/'
 
 netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=True).cuda()
 netD = DiscriminatorMel(
@@ -192,8 +192,8 @@ for epoch in range(start_epoch, n_epochs):
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t)
         
-        s_pred_t = fft(x_pred_t)
-        s_test = fft(x_t_1)
+        s_pred_t = fft(x_pred_t.detach())
+        s_test = fft(x_t_1.detach())
         s_error = F.l1_loss(s_test, s_pred_t)
         #######################
         # Train Discriminator #

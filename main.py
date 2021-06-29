@@ -79,7 +79,7 @@ save_interval = 20
 log_interval = 100
 experiment_dir = 'saves_626_skip/'
 
-netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=True).cuda()
+netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=False).cuda()
 netD = DiscriminatorMel(
         num_D, ndf, n_layers_D, downsamp_factor
     ).cuda()

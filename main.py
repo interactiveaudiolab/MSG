@@ -45,58 +45,22 @@ from mlp.WaveDataset import MusicDataset
 np.random.seed(0)
 torch.manual_seed(0)
 
-skip_iters = 5
-heuristic_threshold = 0.5
-heuristic_check_interval = 4
-
-check_interval = 100
-
-# StyleGAN heuristics are aggregated and checked once every heuristic_check_interval steps. They were initially designed to augment
-# generator strength but since they measure discriminator overfitting we can probably use the same values to cripple our discriminator
-def StyleGan2_rt(values):
-    rt = np.mean(np.sign(values))
-    if rt>heuristic_threshold:
-        return True
-    return False
-
-def StyleGan2_rv(DTrain, DValid, DGen):
-    """
-    DTrain: list of losses recorded for the discriminator from the training set over the last heuristic_check_interval training steps
-    DValid: list of losses recorded for the discriminator from the validation set over the last heuristic_check_interval training steps
-    DGen: list of losses recorded for the discriminator from the generator output over the last heuristic_check_interval training steps
-    
-    """
-    rv = (np.mean(DTrain)-np.mean(DValid))/(np.mean(DTrain)-np.mean(DGen))
-    if rv>heuristic_threshold:
-        return True
-    return False
-
-
-# Naive Overfitting Heuristic
-def NaiveHeuristic(d_epoch, g_epoch):
-    """
-    Measure the discriminator loss over an entire epoch, restrict its training for the next epoch.
-    """
-    if np.abs(np.mean(d_epoch)/np.mean(g_epoch)) < .7:
-        return True
-    return False
-    
-
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
-pretrain_epoch = 100
 dataset_name = 'MUSDB-18' # name of the dataset
-batch_size = 16 # size of the batches
+batch_size = 4 # size of the batches
 lr = 0.0001 # adam: learning rate
 b1 = 0.5 # adam: decay of first order momentum of gradient
 b2 = 0.9 # adam: decay of first order momentum of gradient
 decay_epoch = 100 # epoch from which to start lr decay
-n_cpu = 1 # number of cpu threads to use during batch generation
+n_cpu = 4 # number of cpu threads to use during batch generation
 img_height = 128 # size of image height
 img_width = 128 # size of image width
 channels = 1 # number of image channels
 sample_interval = 100 # interval between sampling of images from generators
 checkpoint_interval = 100 # interval between model checkpoints
+n_layers_D = 4
+num_D = 4
 
 cuda = True if torch.cuda.is_available() else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -113,9 +77,9 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_626/'
+experiment_dir = 'saves_626_skip/'
 
-netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers).cuda()
+netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=False).cuda()
 netD = DiscriminatorMel(
         num_D, ndf, n_layers_D, downsamp_factor
     ).cuda()
@@ -131,7 +95,7 @@ train_dirty = []
 train_clean = []
 val_dirty = []
 val_clean = []
-dirty_data = [elem for elem in os.listdir(dirty_path) if "bass" in elem]
+dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" in elem]
 
 
 for s in dirty_data:
@@ -155,9 +119,8 @@ ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
 ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
 
-valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=n_cpu, shuffle=False)
-train_loader = DataLoader(ds_train, batch_size=bs, num_workers=n_cpu, shuffle=True)
-
+valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=4, shuffle=False)
+train_loader = DataLoader(ds_train, batch_size=bs, num_workers=4, shuffle=True)
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -166,10 +129,10 @@ costs = []
 start = time.time()
 
 if start_epoch > 0:
-    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netG.pt"))
-    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netD.pt"))
-    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optG.pt").state_dict())
-    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optD.pt").state_dict())
+    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netG.pt"))
+    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netD.pt"))
+    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optG.pt").state_dict())
+    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optD.pt").state_dict())
 
 
 
@@ -202,7 +165,7 @@ def _add_zero_padding(signal, window_length, hop_length):
     num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
     num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
 
-    return signal, num_blocks,before,after
+    return signal, num_blocks, before, after
 
 results = []
 netG.train()
@@ -229,18 +192,16 @@ for epoch in range(start_epoch, n_epochs):
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t)
         
-        s_pred_t = fft(x_pred_t)
-        s_test = fft(x_t_1)
+        s_pred_t = fft(x_pred_t.detach())
+        s_test = fft(x_t_1.detach())
         s_error = F.l1_loss(s_test, s_pred_t)
         #######################
         # Train Discriminator #
         #######################
         sdr = SISDRLoss()
 
-
         sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
-        
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 
@@ -249,10 +210,9 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        if epoch > pretrain_epoch:
-            netD.zero_grad()
-            loss_D.backward()
-            optD.step()
+        netD.zero_grad()
+        loss_D.backward()
+        optD.step()
         ###################
         # Train Generator #
         ###################
@@ -267,24 +227,18 @@ for epoch in range(start_epoch, n_epochs):
         for i in range(num_D):
             for j in range(len(D_fake[i]) - 1):
                 loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
-        if epoch > pretrain_epoch:
-            netG.zero_grad()
-            (loss_G + lambda_feat * loss_feat).backward()
-            optG.step()
-        else: 
-            netG.zero_grad()
-            s_error.backward()
-            torch.nn.utils.clip_grad_norm_(netG.parameters(), 50)
-            optG.step()
+        netG.zero_grad()
+        (loss_G + lambda_feat * loss_feat).backward()
+        optG.step()
         ######################
         # Update tensorboard #
         ######################
-        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss]]
+        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),sdr_loss]]
         writer.add_scalar("loss/discriminator", costs[-1][0], steps)
         writer.add_scalar("loss/generator", costs[-1][1], steps)
         writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
         writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
-        writer.add_scalar("loss/sdr_loss", costs[-1][4], steps)
+        writer.add_scalar("loss/sdr_reconstruction", costs[-1][4], steps)
         steps += 1
 
         sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] [SDR Loss: {costs[-1][4]:.4f}]')

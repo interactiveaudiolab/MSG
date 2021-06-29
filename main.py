@@ -2,7 +2,7 @@ import sys
 
 
 # Path to Pix2Pix directory
-local_path = '/drive/MelGan-Imputation/'
+local_path = '/drive/skip-connection-experiment/MelGan-Imputation/'
 
 # Path to libraries directory
 sys.path.append('/drive/skip-connection-experiment/MelGan-Imputation/libraries')
@@ -42,8 +42,8 @@ from mlp import utils as mlp
 from mlp.WaveDataset import MusicDataset
 
 
-np.random.seed(40)
-torch.manual_seed(40)
+np.random.seed(0)
+torch.manual_seed(0)
 
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training

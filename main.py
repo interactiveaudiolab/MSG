@@ -48,12 +48,11 @@ torch.manual_seed(0)
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
 dataset_name = 'MUSDB-18' # name of the dataset
-batch_size = 4 # size of the batches
+batch_size = 16 # size of the batches
 lr = 0.0001 # adam: learning rate
 b1 = 0.5 # adam: decay of first order momentum of gradient
 b2 = 0.9 # adam: decay of first order momentum of gradient
 decay_epoch = 100 # epoch from which to start lr decay
-batch_size = 16
 n_cpu = 1 # number of cpu threads to use during batch generation
 img_height = 128 # size of image height
 img_width = 128 # size of image width

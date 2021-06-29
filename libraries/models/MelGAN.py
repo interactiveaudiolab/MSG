@@ -135,7 +135,7 @@ class GeneratorMel(nn.Module):
         if self.skip_cxn:
             return imputed
         else:
-            return imputed + src_est
+            return imputed + x
 
 def center_trim(tensor, reference):
     """

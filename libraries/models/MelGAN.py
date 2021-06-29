@@ -127,7 +127,7 @@ class GeneratorMel(nn.Module):
         self.model = nn.Sequential(*model)
         self.apply(weights_init)
         
-    def forward(self, x):
+    def forward(self, x,aud):
         
 
         imputed = center_trim(self.model(x),44100)
@@ -135,7 +135,7 @@ class GeneratorMel(nn.Module):
         if self.skip_cxn:
             return imputed
         else:
-            return imputed + x
+            return imputed + aud
 
 def center_trim(tensor, reference):
     """

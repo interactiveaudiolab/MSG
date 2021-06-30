@@ -227,7 +227,7 @@ for epoch in range(start_epoch, n_epochs):
         x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0)
-        x_pred_t = netG(s_t)
+        x_pred_t = netG(s_t,x_t_0)
         
         s_pred_t = fft(x_pred_t)
         s_test = fft(x_t_1)

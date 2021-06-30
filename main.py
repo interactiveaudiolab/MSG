@@ -77,9 +77,9 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_626_skip/'
+experiment_dir = 'saves_baseline_drums/'
 
-netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=False).cuda()
+netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=True).cuda()
 netD = DiscriminatorMel(
         num_D, ndf, n_layers_D, downsamp_factor
     ).cuda()

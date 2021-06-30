@@ -132,7 +132,7 @@ class GeneratorMel(nn.Module):
 
         imputed = center_trim(self.model(x),44100)
 
-        if self.skip_cxn:
+        if not self.skip_cxn:
             return imputed
         else:
             return imputed + aud

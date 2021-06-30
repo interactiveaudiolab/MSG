@@ -10,6 +10,8 @@ from multiprocessing import Pool
 import resource
 from tqdm import tqdm
 import nussl
+import librosa
+from scipy.spatial.distance import cosine
 
 import sys
 
@@ -51,43 +53,11 @@ save_interval = 20
 log_interval = 100
 
 G1 = GeneratorMel(n_mel_channels, ngf, n_residual_layers)
-G1.load_state_dict(torch.load('/drive/MelGan-Imputation/saves_drums_616/300netG.pt'))
-
-def _add_zero_padding(signal, window_length, hop_length):
-    """
-    Args:
-        signal:
-        window_length:
-        hop_length:
-    Returns:
-    """
-    original_signal_length = len(signal)
-    overlap = window_length - hop_length
-    num_blocks = np.ceil(len(signal) / hop_length)
-
-    if overlap >= hop_length:  # Hop is less than 50% of window length
-        overlap_hop_ratio = np.ceil(overlap / hop_length)
-
-        before = int(overlap_hop_ratio * hop_length)
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-
-        signal = np.pad(signal, (before, after), 'constant', constant_values=(0, 0))
-        extra = overlap
-
-    else:
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-        signal = np.pad(signal, (hop_length, after), 'constant', constant_values=(0, 0))
-        extra = window_length
-
-    num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
-    num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
-
-    return signal, num_blocks
+G1.load_state_dict(torch.load("2999netG.pt"))
 
 
-
-dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
-clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
+clean_path ='/content/drive/MyDrive/Pix2Pix/original_test_sources'
+dirty_path ='/content/drive/MyDrive/Pix2Pix/demucs_test_separated_flat'
 
 test_dirty = []
 test_clean = []
@@ -111,8 +81,25 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 
 
 
-sdr_noisy = []
-sdr_generated = []
+si_sdr_noisy = []
+si_sdr_generated = []
+
+sd_sdr_noisy = []
+sd_sdr_generated = []
+
+si_sar_noisy = []
+si_sar_generated = []
+
+si_sir_noisy = []
+si_sir_generated = []
+
+snr_noisy = []
+snr_generated = []
+
+noisy_cosine = []
+generated_cosine = []
+
+cos = nn.CosineSimilarity()
 
 with torch.no_grad():
   for start in range(50):
@@ -124,13 +111,13 @@ with torch.no_grad():
       clean1 = np.concatenate((clean1,c))
       noisy1 = np.concatenate((noisy1,n))
 
-      n_pad = _add_zero_padding(n, 1024,256)[0]
 
-      s_t = fft(torch.from_numpy(n_pad).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
-      x_pred_t = G1(s_t.cuda())
+      s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
+      x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
 
       a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
-      aud1 = np.concatenate((aud1,a[0:44100]))
+      aud1 = np.concatenate((aud1,a))
+    
     c = nussl.AudioSignal(audio_data_array=clean1)
     n = nussl.AudioSignal(audio_data_array=noisy1)
     g = nussl.AudioSignal(audio_data_array=aud1)
@@ -138,6 +125,18 @@ with torch.no_grad():
     true_sources_list=[c],
     estimated_sources_list=[n]
     )
+    
+    noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
+                                    fmax=8000)
+    clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
+                                    fmax=8000)
+    generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
+                                    fmax=8000)
+  
+    noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
+    generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
+
+
 
     noisy_eval = bss_eval.evaluate()
 
@@ -147,7 +146,25 @@ with torch.no_grad():
     )
     gen_eval = bss_eval.evaluate()
 
-    sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
-    sdr_generated.append(gen_eval['source_0']['SI-SDR'])
-print('Original SDR', np.mean(sdr_noisy))
-print('Our SDR', np.mean(sdr_generated))
+    si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
+    si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
+    sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
+    sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
+    si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
+    si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
+    si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
+    si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
+    snr_noisy.append(noisy_eval['source_0']['SNR'])
+    snr_generated.append(gen_eval['source_0']['SNR'])
+print('Original SI-SDR', np.mean(si_sdr_noisy))
+print('Our SI-SDR', np.mean(si_sdr_generated))
+print('\nOriginal SD-SDR', np.mean(sd_sdr_noisy))
+print('Our SD-SDR', np.mean(sd_sdr_generated))
+print('\nOriginal SI-SAR', np.mean(si_sar_noisy))
+print('Our SI-SAR', np.mean(si_sar_generated))
+print('\nOriginal SI-SIR', np.mean(si_sir_noisy))
+print('Our SI-SIR', np.mean(si_sir_generated))
+print('\nOriginal SNR', np.mean(snr_noisy))
+print('Our SNR', np.mean(snr_generated))
+print('\nDemucs Mean Spectral Cosine Distance', np.mean(noisy_cosine))
+print('MSG Mean Spectral Cosine Distance', np.mean(generated_cosine))

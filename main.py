@@ -1,87 +1,23 @@
-import sys
-
-
-# Path to Pix2Pix directory
-local_path = '/drive/MelGan-Imputation/'
-
-# Path to libraries directory
-sys.path.append('/drive/MelGan-Imputation/libraries')
-
 import os
-import numpy as np
-import math
-import itertools
-import time
-import datetime
 import sys
-import pickle
-from multiprocessing import Pool
-import resource
-from tqdm import tqdm
-
-
-
-import torchvision.transforms as transforms
-from torchvision.utils import save_image
-
+import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torch.autograd import Variable
-
-import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-
-#from models.pix2pix import *
-from models.MelGAN import *
-from models.unet import *
-from mlp import audio
-from mlp import normalization
-from mlp import utils as mlp
-from mlp.WaveDataset import MusicDataset
+from libraries.models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from libraries.mlp.WaveDataset import MusicDataset
 
 
 np.random.seed(0)
 torch.manual_seed(0)
 
-skip_iters = 5
-heuristic_threshold = 0.5
-heuristic_check_interval = 4
+##############################
+# Make These hyperparameters #
+#############################
 
-check_interval = 100
-
-# StyleGAN heuristics are aggregated and checked once every heuristic_check_interval steps. They were initially designed to augment
-# generator strength but since they measure discriminator overfitting we can probably use the same values to cripple our discriminator
-def StyleGan2_rt(values):
-    rt = np.mean(np.sign(values))
-    if rt>heuristic_threshold:
-        return True
-    return False
-
-def StyleGan2_rv(DTrain, DValid, DGen):
-    """
-    DTrain: list of losses recorded for the discriminator from the training set over the last heuristic_check_interval training steps
-    DValid: list of losses recorded for the discriminator from the validation set over the last heuristic_check_interval training steps
-    DGen: list of losses recorded for the discriminator from the generator output over the last heuristic_check_interval training steps
-    
-    """
-    rv = (np.mean(DTrain)-np.mean(DValid))/(np.mean(DTrain)-np.mean(DGen))
-    if rv>heuristic_threshold:
-        return True
-    return False
-
-
-# Naive Overfitting Heuristic
-def NaiveHeuristic(d_epoch, g_epoch):
-    """
-    Measure the discriminator loss over an entire epoch, restrict its training for the next epoch.
-    """
-    if np.abs(np.mean(d_epoch)/np.mean(g_epoch)) < .7:
-        return True
-    return False
-    
-
+local_path = '/drive/MelGan-Imputation/'
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
 pretrain_epoch = 100
@@ -124,6 +60,10 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
+###############
+### DATASET ###
+## CREATION ###
+###############
 dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
 clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
 
@@ -133,109 +73,57 @@ val_dirty = []
 val_clean = []
 dirty_data = [elem for elem in os.listdir(dirty_path) if "bass" in elem]
 
-
 for s in dirty_data:
-  if np.random.rand() < .9:
-    train_dirty.append(dirty_path + '/' + s)
-    train_clean.append(clean_path +'/' + s)
-  else:
-    val_dirty.append(dirty_path +'/' + s)
-    val_clean.append(clean_path + '/' + s)
+    if np.random.rand() < .9:
+        train_dirty.append(dirty_path + '/' + s)
+        train_clean.append(clean_path +'/' + s)
+    else:
+        val_dirty.append(dirty_path +'/' + s)
+        val_clean.append(clean_path + '/' + s)
 
-fs = 48000
-bs = batch_size
-stroke_width = 32
-patch_width = img_width
-patch_height = img_height
-nperseg = 256
-
-# ds_valid = MusicDataset(val_clean,val_dirty,44100,44100)
-# ds_train = MusicDataset(train_clean,train_dirty,44100,44100)
 ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
 ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
-
-valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=n_cpu, shuffle=False)
-train_loader = DataLoader(ds_train, batch_size=bs, num_workers=n_cpu, shuffle=True)
-
-
-from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
-costs = []
-start = time.time()
+valid_loader = DataLoader(ds_valid, batch_size=batch_size, num_workers=n_cpu, shuffle=False)
+train_loader = DataLoader(ds_train, batch_size=batch_size, num_workers=n_cpu, shuffle=True)
 
 if start_epoch > 0:
     netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netG.pt"))
     netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netD.pt"))
-    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optG.pt").state_dict())
-    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "optD.pt").state_dict())
+    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) +
+                                                                "optG.pt").state_dict())
+    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) +
+                                                                "optD.pt").state_dict())
 
 
 
-def _add_zero_padding(signal, window_length, hop_length):
-    """
-    Args:
-        signal:
-        window_length:
-        hop_length:
-    Returns:
-    """
-    original_signal_length = len(signal)
-    overlap = window_length - hop_length
-    num_blocks = np.ceil(len(signal) / hop_length)
-
-    if overlap >= hop_length:  # Hop is less than 50% of window length
-        overlap_hop_ratio = np.ceil(overlap / hop_length)
-
-        before = int(overlap_hop_ratio * hop_length)
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-
-        signal = np.pad(signal, (before, after), 'constant', constant_values=(0, 0))
-        extra = overlap
-
-    else:
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-        signal = np.pad(signal, (hop_length, after), 'constant', constant_values=(0, 0))
-        extra = window_length
-
-    num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
-    num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
-
-    return signal, num_blocks,before,after
-
+###################
+##### TRAINING ####
+###### LOOP #######
+###################
+writer = SummaryWriter()
+costs = []
 results = []
 netG.train()
 netD.train()
-dis_train = 0
 steps = 0
 sdr = SISDRLoss()
+
 for epoch in range(start_epoch, n_epochs):
     if (epoch+1) % 100 == 0 and epoch != start_epoch:
-      torch.save(netG.state_dict(), local_path + experiment_dir +  str(epoch) + "netG.pt")
-      torch.save(netD.state_dict(), local_path + experiment_dir +  str(epoch) + "netD.pt")
-      torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
-      torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
-      #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
+        torch.save(netG.state_dict(), local_path + experiment_dir +  str(epoch) + "netG.pt")
+        torch.save(netD.state_dict(), local_path + experiment_dir +  str(epoch) + "netD.pt")
+        torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
+        torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
     for iterno, x_t in enumerate(train_loader):
-        #original_signal_len  = x_t[0].shape[1]
-        #signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
-        #_,_,before,after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
-        #padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        #for i in range(len(x_t[0])):
-            #padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
         x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t,x_t_0)
-        
         s_pred_t = fft(x_pred_t)
         s_test = fft(x_t_1)
         s_error = F.l1_loss(s_test, s_pred_t)
 
-        w_error = F.l1_loss(x_t_1,x_pred_t)
-
-        #loss_wav = F.l1_loss()
         #######################
         # Train Discriminator #
         #######################
@@ -244,7 +132,6 @@ for epoch in range(start_epoch, n_epochs):
 
         sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
-        
         D_fake_det = netD(x_pred_t.cuda().detach())
         D_real = netD(x_t_1.cuda())
 
@@ -253,10 +140,9 @@ for epoch in range(start_epoch, n_epochs):
             loss_D += F.relu(1 + scale[-1]).mean()
         for scale in D_real:
             loss_D += F.relu(1 - scale[-1]).mean()
-        if epoch > pretrain_epoch:
-            netD.zero_grad()
-            loss_D.backward()
-            optD.step()
+        netD.zero_grad()
+        loss_D.backward()
+        optD.step()
         ###################
         # Train Generator #
         ###################
@@ -271,14 +157,9 @@ for epoch in range(start_epoch, n_epochs):
         for i in range(num_D):
             for j in range(len(D_fake[i]) - 1):
                 loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
-        if epoch > pretrain_epoch:
-            netG.zero_grad()
-            (loss_G + lambda_feat * loss_feat).backward()
-            optG.step()
-        else: 
-            netG.zero_grad()
-            w_error.backward()
-            optG.step()
+        netG.zero_grad()
+        (loss_G + lambda_feat * loss_feat).backward()
+        optG.step()
         ######################
         # Update tensorboard #
         ######################
@@ -290,5 +171,9 @@ for epoch in range(start_epoch, n_epochs):
         writer.add_scalar("loss/sdr_loss", costs[-1][4], steps)
         steps += 1
 
-        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] [SDR Loss: {costs[-1][4]:.4f}]')
-
+        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]:\
+                            [Generator Loss: {costs[-1][1]:.4f}]\
+                            [Discriminator Loss: {costs[-1][0]:.4f}]\
+                            [Feature Loss: {costs[-1][2]:.4f}]\
+                            [Reconstruction Loss: {costs[-1][3]:.4f}]\
+                            [SDR Loss: {costs[-1][4]:.4f}]')

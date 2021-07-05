@@ -1,0 +1,11 @@
+
+librosa
+numpy
+matplotlib
+torch
+torchvision
+tensorboard
+tqdm
+ffmpeg-python
+sox
+pylint

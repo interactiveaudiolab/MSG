@@ -1,4 +1,4 @@
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 import torch
 from librosa.filters import mel as librosa_mel_fn
@@ -99,7 +99,7 @@ class GeneratorMel(nn.Module):
         ]
 
         # Upsample to raw audio scale
-        for i, r in enumerate(ratios):
+        for _, r in enumerate(ratios):
             model += [
                 nn.LeakyReLU(0.2),
                 WNConvTranspose1d(
@@ -126,12 +126,9 @@ class GeneratorMel(nn.Module):
 
         self.model = nn.Sequential(*model)
         self.apply(weights_init)
-        
+
     def forward(self, x,aud):
-        
-
         imputed = center_trim(self.model(x),44100)
-
         if not self.skip_cxn:
             return imputed
         else:
@@ -219,19 +216,19 @@ class DiscriminatorMel(nn.Module):
             results.append(disc(x))
             x = self.downsample(x)
         return results
-        
+     
 class SISDRLoss(nn.Module):
     """
     Computes the Scale-Invariant Source-to-Distortion Ratio between a batch
     of estimated and reference audio signals. Used in end-to-end networks.
-    This is essentially a batch PyTorch version of the function 
+    This is essentially a batch PyTorch version of the function
     ``nussl.evaluation.bss_eval.scale_bss_eval`` and can be used to compute
     SI-SDR or SNR.
     Args:
         scaling (bool, optional): Whether to use scale-invariant (True) or
           signal-to-noise ratio (False). Defaults to True.
         return_scaling (bool, optional): Whether to only return the scaling
-          factor that the estimate gets scaled by relative to the reference. 
+          factor that the estimate gets scaled by relative to the reference.
           This is just for monitoring this value during training, don't actually
           train with it! Defaults to False.
         reduction (str, optional): How to reduce across the batch (either 'mean', 
@@ -242,7 +239,7 @@ class SISDRLoss(nn.Module):
           to not focus on making already good examples better. Defaults to None.
     """
     DEFAULT_KEYS = {'audio': 'estimates', 'source_audio': 'references'}
-    def __init__(self, scaling=True, return_scaling=False, reduction='mean', 
+    def __init__(self, scaling=True, return_scaling=False, reduction='mean',
                  zero_mean=True, clip_min=None):
         self.scaling = scaling
         self.reduction = reduction

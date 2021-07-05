@@ -1,52 +1,26 @@
-import sys
-
-
-# Path to Pix2Pix directory
-local_path = '/drive/MelGan-Imputation/'
-
-# Path to libraries directory
-sys.path.append('/drive/MelGan-Imputation/libraries')
-
 import os
-import numpy as np
-import math
-import itertools
-import time
-import datetime
 import sys
-import pickle
-from multiprocessing import Pool
-import resource
-from tqdm import tqdm
-
-
-
-import torchvision.transforms as transforms
-from torchvision.utils import save_image
-
+import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torch.autograd import Variable
-
-import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-
-#from models.pix2pix import *
-from models.MelGAN import *
-from models.unet import *
-from mlp import audio
-from mlp import normalization
-from mlp import utils as mlp
-from mlp.WaveDataset import MusicDataset
+from libraries.models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from libraries.mlp.WaveDataset import MusicDataset
 
 
 np.random.seed(0)
 torch.manual_seed(0)
 
+##############################
+# Make These hyperparameters #
+#############################
+
+local_path = '/drive/MelGan-Imputation/'
 start_epoch = 0 # epoch to start training from
 n_epochs = 3000 # number of epochs of training
+pretrain_epoch = 100
 dataset_name = 'MUSDB-18' # name of the dataset
 batch_size = 16 # size of the batches
 lr = 0.0001 # adam: learning rate
@@ -59,8 +33,6 @@ img_width = 128 # size of image width
 channels = 1 # number of image channels
 sample_interval = 100 # interval between sampling of images from generators
 checkpoint_interval = 100 # interval between model checkpoints
-n_layers_D = 4
-num_D = 4
 
 cuda = True if torch.cuda.is_available() else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -77,9 +49,9 @@ downsamp_factor = 4
 lambda_feat = 10
 save_interval = 20
 log_interval = 100
-experiment_dir = 'saves_baseline_drums/'
+experiment_dir = 'saves_pretrain/'
 
-netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers, skip_cxn=True).cuda()
+netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers,skip_cxn=True).cuda()
 netD = DiscriminatorMel(
         num_D, ndf, n_layers_D, downsamp_factor
     ).cuda()
@@ -88,6 +60,10 @@ fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
+###############
+### DATASET ###
+## CREATION ###
+###############
 dirty_path ='/drive/MelGan-Imputation/datasets/demucs_train_flattened'
 clean_path ='/drive/MelGan-Imputation/datasets/original_train_sources'
 
@@ -95,110 +71,64 @@ train_dirty = []
 train_clean = []
 val_dirty = []
 val_clean = []
-dirty_data = [elem for elem in os.listdir(dirty_path) if "drum" in elem]
-
+dirty_data = [elem for elem in os.listdir(dirty_path) if "bass" in elem]
 
 for s in dirty_data:
-  if np.random.rand() < .9:
-    train_dirty.append(dirty_path + '/' + s)
-    train_clean.append(clean_path +'/' + s)
-  else:
-    val_dirty.append(dirty_path +'/' + s)
-    val_clean.append(clean_path + '/' + s)
+    if np.random.rand() < .9:
+        train_dirty.append(dirty_path + '/' + s)
+        train_clean.append(clean_path +'/' + s)
+    else:
+        val_dirty.append(dirty_path +'/' + s)
+        val_clean.append(clean_path + '/' + s)
 
-fs = 48000
-bs = batch_size
-stroke_width = 32
-patch_width = img_width
-patch_height = img_height
-nperseg = 256
-
-# ds_valid = MusicDataset(val_clean,val_dirty,44100,44100)
-# ds_train = MusicDataset(train_clean,train_dirty,44100,44100)
 ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
 ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
 
-
-valid_loader = DataLoader(ds_valid, batch_size=bs, num_workers=n_cpu, shuffle=False)
-train_loader = DataLoader(ds_train, batch_size=bs, num_workers=n_cpu, shuffle=True)
-
-from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
-costs = []
-start = time.time()
+valid_loader = DataLoader(ds_valid, batch_size=batch_size, num_workers=n_cpu, shuffle=False)
+train_loader = DataLoader(ds_train, batch_size=batch_size, num_workers=n_cpu, shuffle=True)
 
 if start_epoch > 0:
-    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netG.pt"))
-    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "netD.pt"))
-    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optG.pt").state_dict())
-    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch) + "optD.pt").state_dict())
+    netG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netG.pt"))
+    netD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) + "netD.pt"))
+    optG.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) +
+                                                                "optG.pt").state_dict())
+    optD.load_state_dict(torch.load(local_path + experiment_dir +  str(start_epoch-1) +
+                                                                "optD.pt").state_dict())
 
 
 
-def _add_zero_padding(signal, window_length, hop_length):
-    """
-    Args:
-        signal:
-        window_length:
-        hop_length:
-    Returns:
-    """
-    original_signal_length = len(signal)
-    overlap = window_length - hop_length
-    num_blocks = np.ceil(len(signal) / hop_length)
-
-    if overlap >= hop_length:  # Hop is less than 50% of window length
-        overlap_hop_ratio = np.ceil(overlap / hop_length)
-
-        before = int(overlap_hop_ratio * hop_length)
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-
-        signal = np.pad(signal, (before, after), 'constant', constant_values=(0, 0))
-        extra = overlap
-
-    else:
-        after = int((num_blocks * hop_length + overlap) - original_signal_length)
-        signal = np.pad(signal, (hop_length, after), 'constant', constant_values=(0, 0))
-        extra = window_length
-
-    num_blocks = int(np.ceil((len(signal) - extra) / hop_length))
-    num_blocks += 1 if overlap == 0 else 0  # if no overlap, then we need to get another hop at the end
-
-    return signal, num_blocks, before, after
-
+###################
+##### TRAINING ####
+###### LOOP #######
+###################
+writer = SummaryWriter()
+costs = []
 results = []
 netG.train()
 netD.train()
-dis_train = 0
 steps = 0
 sdr = SISDRLoss()
+
 for epoch in range(start_epoch, n_epochs):
     if (epoch+1) % 100 == 0 and epoch != start_epoch:
-      torch.save(netG.state_dict(), local_path + experiment_dir +  str(epoch) + "netG.pt")
-      torch.save(netD.state_dict(), local_path + experiment_dir +  str(epoch) + "netD.pt")
-      torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
-      torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
-      #torch.save(writer, local_path +'saves2/' +  str(epoch) + "writer")
+        torch.save(netG.state_dict(), local_path + experiment_dir +  str(epoch) + "netG.pt")
+        torch.save(netD.state_dict(), local_path + experiment_dir +  str(epoch) + "netD.pt")
+        torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
+        torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
     for iterno, x_t in enumerate(train_loader):
-        #original_signal_len  = x_t[0].shape[1]
-        #signal = torch.from_numpy(_add_zero_padding(x_t[0][0].numpy(),1024,256)[0])
-        #_,_,before,after = _add_zero_padding(x_t[0][0].numpy(),1024,256)
-        #padded = torch.zeros((x_t[0].shape[0],len(signal)))
-        #for i in range(len(x_t[0])):
-            #padded[i] = torch.from_numpy(_add_zero_padding(x_t[0][i].numpy(),1024,256)[0])
         x_t_0 = x_t[0].unsqueeze(1).float().cuda()
         x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t,x_t_0)
-        
-        s_pred_t = fft(x_pred_t.detach())
-        s_test = fft(x_t_1.detach())
+        s_pred_t = fft(x_pred_t)
+        s_test = fft(x_t_1)
         s_error = F.l1_loss(s_test, s_pred_t)
+
         #######################
         # Train Discriminator #
         #######################
         sdr = SISDRLoss()
+
 
         sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
@@ -233,13 +163,17 @@ for epoch in range(start_epoch, n_epochs):
         ######################
         # Update tensorboard #
         ######################
-        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),sdr_loss]]
+        costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss]]
         writer.add_scalar("loss/discriminator", costs[-1][0], steps)
         writer.add_scalar("loss/generator", costs[-1][1], steps)
         writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
         writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
-        writer.add_scalar("loss/sdr_reconstruction", costs[-1][4], steps)
+        writer.add_scalar("loss/sdr_loss", costs[-1][4], steps)
         steps += 1
 
-        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]: [Generator Loss: {costs[-1][1]:.4f}] [Discriminator Loss: {costs[-1][0]:.4f}] [Feature Loss: {costs[-1][2]:.4f}] [Reconstruction Loss: {costs[-1][3]:.4f}] [SDR Loss: {costs[-1][4]:.4f}]')
-
+        sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]:\
+                            [Generator Loss: {costs[-1][1]:.4f}]\
+                            [Discriminator Loss: {costs[-1][0]:.4f}]\
+                            [Feature Loss: {costs[-1][2]:.4f}]\
+                            [Reconstruction Loss: {costs[-1][3]:.4f}]\
+                            [SDR Loss: {costs[-1][4]:.4f}]')

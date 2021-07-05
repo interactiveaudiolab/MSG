@@ -51,11 +51,11 @@ save_interval = 20
 log_interval = 100
 experiment_dir = 'saves_pretrain/'
 
-netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers,skip_cxn=True).to(device)
+netG = GeneratorMel(n_mel_channels, ngf, n_residual_layers,skip_cxn=True).cuda()
 netD = DiscriminatorMel(
         num_D, ndf, n_layers_D, downsamp_factor
-    ).to(device)
-fft = Audio2Mel(n_mel_channels=n_mel_channels).to(device)
+    ).cuda()
+fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
 
 optG = torch.optim.Adam(netG.parameters(), lr=1e-4, betas=(0.5, 0.9))
 optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
@@ -116,8 +116,8 @@ for epoch in range(start_epoch, n_epochs):
         torch.save(optG, local_path + experiment_dir +  str(epoch) + "optG.pt")
         torch.save(optD, local_path + experiment_dir +  str(epoch) + "optD.pt")
     for iterno, x_t in enumerate(train_loader):
-        x_t_0 = x_t[0].unsqueeze(1).float().to(device)
-        x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+        x_t_0 = x_t[0].unsqueeze(1).float().cuda()
+        x_t_1 = x_t[1].unsqueeze(1).float().cuda()
         s_t = fft(x_t_0)
         x_pred_t = netG(s_t,x_t_0)
         s_pred_t = fft(x_pred_t)
@@ -132,8 +132,8 @@ for epoch in range(start_epoch, n_epochs):
 
         sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
-        D_fake_det = netD(x_pred_t.to(device).detach())
-        D_real = netD(x_t_1.to(device))
+        D_fake_det = netD(x_pred_t.cuda().detach())
+        D_real = netD(x_t_1.cuda())
 
         loss_D = 0
         for scale in D_fake_det:
@@ -146,7 +146,7 @@ for epoch in range(start_epoch, n_epochs):
         ###################
         # Train Generator #
         ###################
-        D_fake = netD(x_pred_t.to(device))
+        D_fake = netD(x_pred_t.cuda())
         loss_G = 0
         for scale in D_fake:
             loss_G += -scale[-1].mean()

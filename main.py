@@ -9,9 +9,9 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch
 
-from libraries.models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
-from libraries.mlp.WaveDataset import MusicDataset
-
+from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from datasets.WaveDataset import MusicDataset
+from experiments.experiment_template.train import train
 
 
 pattern = re.compile('[\W_]+')

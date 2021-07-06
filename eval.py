@@ -7,8 +7,8 @@ from scipy.spatial.distance import cosine
 import torch
 from torch import nn
 
-from libraries.models.MelGAN import Audio2Mel, GeneratorMel
-from libraries.mlp.WaveDataset import MusicDataset
+from models.MelGAN import Audio2Mel, GeneratorMel
+from datasets.WaveDataset import MusicDataset
 
 n_mel_channels = 80
 ngf = 32

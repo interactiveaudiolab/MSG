@@ -181,7 +181,7 @@ def main():
     lines.append('\nDemucs Mean Spectral Cosine Distance'+ str(np.mean(noisy_cosine)))
     lines.append('MSG Mean Spectral Cosine Distance'+ str(np.mean(generated_cosine)))
 
-    with open(params['log_dir'] + params['log_id'] + 'logs.txt', 'w') as f:
+    with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
       f.writelines(lines)
     
 

@@ -77,7 +77,7 @@ def main():
     params = exp_dict['parameters']
 
     G1 = GeneratorMel(params['n_mel_channels'], params['ngf'], params['n_residual_layers'])
-    G1.load_state_dict(torch.load( params['model_load_dir']+ str(params['load_epoch'] + 'netG.pt')))
+    G1.load_state_dict(torch.load( params['model_load_dir']+ str(params['load_epoch']) + 'netG.pt'))
 
 
   #change this

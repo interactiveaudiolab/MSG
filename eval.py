@@ -120,69 +120,69 @@ def main():
             clean1 = np.array([])
             noisy1 = np.array([])
             aud1 = np.array([])
-        for i in range(7*start, 7*start+7):
-            n,c = ds_test[i]
-            clean1 = np.concatenate((clean1,c))
-            noisy1 = np.concatenate((noisy1,n))
+            for i in range(7*start, 7*start+7):
+                n,c = ds_test[i]
+                clean1 = np.concatenate((clean1,c))
+                noisy1 = np.concatenate((noisy1,n))
 
-            s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
-            x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
+                s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
+                x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
 
-            a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
-            aud1 = np.concatenate((aud1,a))
+                a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
+                aud1 = np.concatenate((aud1,a))
 
-        c = nussl.AudioSignal(audio_data_array=clean1)
-        n = nussl.AudioSignal(audio_data_array=noisy1)
-        g = nussl.AudioSignal(audio_data_array=aud1)
-        bss_eval = nussl.evaluation.BSSEvalScale(
-        true_sources_list=[c],
-        estimated_sources_list=[n]
-        )
-
-        noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
-                                        fmax=8000)
-        clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
-                                        fmax=8000)
-        generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
-                                        fmax=8000)
-
-        noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
-        generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
-
-        noisy_eval = bss_eval.evaluate()
-
-        bss_eval = nussl.evaluation.BSSEvalScale(
+            c = nussl.AudioSignal(audio_data_array=clean1)
+            n = nussl.AudioSignal(audio_data_array=noisy1)
+            g = nussl.AudioSignal(audio_data_array=aud1)
+            bss_eval = nussl.evaluation.BSSEvalScale(
             true_sources_list=[c],
-            estimated_sources_list=[g]
-        )
-        gen_eval = bss_eval.evaluate()
+            estimated_sources_list=[n]
+            )
 
-        si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
-        si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
-        sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
-        sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
-        si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
-        si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
-        si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
-        si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
-        snr_noisy.append(noisy_eval['source_0']['SNR'])
-        snr_generated.append(gen_eval['source_0']['SNR'])
+            noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
+                                            fmax=8000)
+            clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
+                                            fmax=8000)
+            generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
+                                            fmax=8000)
+
+            noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
+            generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
+
+            noisy_eval = bss_eval.evaluate()
+
+            bss_eval = nussl.evaluation.BSSEvalScale(
+                true_sources_list=[c],
+                estimated_sources_list=[g]
+            )
+            gen_eval = bss_eval.evaluate()
+
+            si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
+            si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
+            sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
+            sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
+            si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
+            si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
+            si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
+            si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
+            snr_noisy.append(noisy_eval['source_0']['SNR'])
+            snr_generated.append(gen_eval['source_0']['SNR'])
     lines = []
-    lines.append('Original SI-SDR'+ str(np.mean(si_sdr_noisy)))
-    lines.append('Our SI-SDR' + str(np.mean(si_sdr_generated)))
-    lines.append('\nOriginal SD-SDR'+ str(np.mean(sd_sdr_noisy)))
-    lines.append('Our SD-SDR'+ str(np.mean(sd_sdr_generated)))
-    lines.append('\nOriginal SI-SAR'+ str(np.mean(si_sar_noisy)))
-    lines.append('Our SI-SAR'+ str(np.mean(si_sar_generated)))
-    lines.append('\nOriginal SI-SIR' + str(np.mean(si_sir_noisy)))
-    lines.append('Our SI-SIR'+ str(np.mean(si_sir_generated)))
-    lines.append('\nOriginal SNR'+ str(np.mean(snr_noisy)))
-    lines.append('Our SNR'+ str(np.mean(snr_generated)))
-    lines.append('\nDemucs Mean Spectral Cosine Distance'+ str(np.mean(noisy_cosine)))
-    lines.append('MSG Mean Spectral Cosine Distance'+ str(np.mean(generated_cosine)))
+    lines.append('Original SI-SDR: '+ str(np.mean(si_sdr_noisy)))
+    lines.append('Our SI-SDR: ' + str(np.mean(si_sdr_generated)))
+    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sd_sdr_noisy)))
+    lines.append('Our SD-SDR: '+ str(np.mean(sd_sdr_generated)))
+    lines.append('\nOriginal SI-SAR: '+ str(np.mean(si_sar_noisy)))
+    lines.append('Our SI-SAR: '+ str(np.mean(si_sar_generated)))
+    lines.append('\nOriginal SI-SIR: ' + str(np.mean(si_sir_noisy)))
+    lines.append('Our SI-SIR: '+ str(np.mean(si_sir_generated)))
+    lines.append('\nOriginal SNR: '+ str(np.mean(snr_noisy)))
+    lines.append('Our SNR: '+ str(np.mean(snr_generated)))
+    lines.append('\nDemucs Mean Spectral Cosine Distance: '+ str(np.mean(noisy_cosine)))
+    lines.append('MSG Mean Spectral Cosine Distance: '+ str(np.mean(generated_cosine)))
 
     with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
-      f.writelines(lines)
+      f.write('\n'.join(lines))
     
 
 class ParameterError(Exception):

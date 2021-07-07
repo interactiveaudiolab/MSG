@@ -86,10 +86,10 @@ def main():
     test_dirty = []
     test_clean = []
 
-    for s in os.listdir(params['original_sources_path:']):
+    for s in os.listdir(params['original_sources_path']):
         if params['source'] in s:
             test_dirty.append(params['separated_sources_path']  + s)
-            test_clean.append(params['original_sources_path:']  + s)
+            test_clean.append(params['original_sources_path']  + s)
 
     ds_test = MusicDataset(test_dirty,test_clean,44100,44100)
     G1.to('cuda')

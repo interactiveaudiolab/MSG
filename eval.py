@@ -172,7 +172,7 @@ def main():
     lines.append('Our SI-SDR' + str(np.mean(si_sdr_generated)))
     lines.append('\nOriginal SD-SDR'+ str(np.mean(sd_sdr_noisy)))
     lines.append('Our SD-SDR'+ str(np.mean(sd_sdr_generated)))
-    lines.append('\nOriginal SI-SAR', np.mean(si_sar_noisy))
+    lines.append('\nOriginal SI-SAR'+ np.mean(si_sar_noisy))
     lines.append('Our SI-SAR'+ str(np.mean(si_sar_generated)))
     lines.append('\nOriginal SI-SIR' + str(np.mean(si_sir_noisy)))
     lines.append('Our SI-SIR'+ str(np.mean(si_sir_generated)))

@@ -7,6 +7,8 @@ parameters:
   model_load_dir: '/drive/MelGan-Imputation/saves_baseline/'
   original_sources_path: '/drive/MelGan-Imputation/datasets/original_test_sources/'
   separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_test_flattened/'
+  log_dir: '/drive/MelGan-Imputation/eval_saves/'
+  run_id: 7_7_noah
 
   load_epoch: 2999
 

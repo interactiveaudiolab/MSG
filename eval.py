@@ -167,18 +167,23 @@ def main():
         si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
         snr_noisy.append(noisy_eval['source_0']['SNR'])
         snr_generated.append(gen_eval['source_0']['SNR'])
-    print('Original SI-SDR', np.mean(si_sdr_noisy))
-    print('Our SI-SDR', np.mean(si_sdr_generated))
-    print('\nOriginal SD-SDR', np.mean(sd_sdr_noisy))
-    print('Our SD-SDR', np.mean(sd_sdr_generated))
-    print('\nOriginal SI-SAR', np.mean(si_sar_noisy))
-    print('Our SI-SAR', np.mean(si_sar_generated))
-    print('\nOriginal SI-SIR', np.mean(si_sir_noisy))
-    print('Our SI-SIR', np.mean(si_sir_generated))
-    print('\nOriginal SNR', np.mean(snr_noisy))
-    print('Our SNR', np.mean(snr_generated))
-    print('\nDemucs Mean Spectral Cosine Distance', np.mean(noisy_cosine))
-    print('MSG Mean Spectral Cosine Distance', np.mean(generated_cosine))
+    lines = []
+    lines.append('Original SI-SDR'+ str(np.mean(si_sdr_noisy)))
+    lines.append('Our SI-SDR' + str(np.mean(si_sdr_generated)))
+    lines.append('\nOriginal SD-SDR'+ str(np.mean(sd_sdr_noisy)))
+    lines.append('Our SD-SDR'+ str(np.mean(sd_sdr_generated)))
+    lines.append('\nOriginal SI-SAR', np.mean(si_sar_noisy))
+    lines.append('Our SI-SAR'+ str(np.mean(si_sar_generated)))
+    lines.append('\nOriginal SI-SIR' + str(np.mean(si_sir_noisy)))
+    lines.append('Our SI-SIR'+ str(np.mean(si_sir_generated)))
+    lines.append('\nOriginal SNR'+ str(np.mean(snr_noisy)))
+    lines.append('Our SNR'+ str(np.mean(snr_generated)))
+    lines.append('\nDemucs Mean Spectral Cosine Distance'+ str(np.mean(noisy_cosine)))
+    lines.append('MSG Mean Spectral Cosine Distance'+ str(np.mean(generated_cosine)))
+
+    with open(params['log_dir'] + params['log_id'] + 'logs.txt', 'w') as f:
+      f.writelines(lines)
+    
 
 class ParameterError(Exception):
     pass

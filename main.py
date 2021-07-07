@@ -100,11 +100,11 @@ def main():
 
     for s in dirty_data:
         if np.random.rand() < .9:
-            train_dirty.append(params['separated_sources_path'] + '/' + s)
-            train_clean.append(params['original_sources_path'] +'/' + s)
+            train_dirty.append(params['separated_sources_path'] + s)
+            train_clean.append(params['original_sources_path']  + s)
         else:
-            val_dirty.append(params['separated_sources_path']+'/' + s)
-            val_clean.append(params['original_sources_path'] + '/' + s)
+            val_dirty.append(params['separated_sources_path'] + s)
+            val_clean.append(params['original_sources_path']  + s)
 
     ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
     ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)

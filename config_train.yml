@@ -4,10 +4,10 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/MelGan-Imputation/saves_baseline'
-  model_load_dir: '/drive/MelGan-Imputation/saves_baseline'
-  original_sources_path: '/drive/MelGan-Imputation/datasets/original_train_sources'
-  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_train_flattened'
+  model_save_dir: '/drive/MelGan-Imputation/saves_baseline/'
+  model_load_dir: '/drive/MelGan-Imputation/saves_baseline/'
+  original_sources_path: '/drive/MelGan-Imputation/datasets/original_train_sources/'
+  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_train_flattened/'
 
   # Training Hyperparameters
   start_epoch: 0 

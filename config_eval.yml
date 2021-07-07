@@ -4,9 +4,9 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_load_dir: '/drive/MelGan-Imputation/saves_baseline'
-  original_sources_path: '/drive/MelGan-Imputation/datasets/original_test_sources'
-  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_test_flattened'
+  model_load_dir: '/drive/MelGan-Imputation/saves_baseline/'
+  original_sources_path: '/drive/MelGan-Imputation/datasets/original_test_sources/'
+  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_test_flattened/'
 
   load_epoch: 2999
 

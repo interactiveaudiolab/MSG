@@ -16,6 +16,7 @@ parameters:
   checkpoint_interval: 100
   batch_size: 16
   n_cpu: 1
+  source: 'drums'
 
   # Optimizer Hyperparameters
   lr: 0.0001

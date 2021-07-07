@@ -87,7 +87,7 @@ def main():
     test_clean = []
 
     for s in os.listdir(params['original_sources_path:']):
-        if 'drums' in s:
+        if params['source'] in s:
             test_dirty.append(params['separated_sources_path']  + s)
             test_clean.append(params['original_sources_path:']  + s)
 

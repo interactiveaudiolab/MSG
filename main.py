@@ -96,7 +96,7 @@ def main():
     train_clean = []
     val_dirty = []
     val_clean = []
-    dirty_data = [elem for elem in os.listdir(params['separated_sources_path']) if "bass" in elem]
+    dirty_data = [elem for elem in os.listdir(params['separated_sources_path']) if params['source'] in elem]
 
     for s in dirty_data:
         if np.random.rand() < .9:

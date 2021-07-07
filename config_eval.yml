@@ -11,6 +11,7 @@ parameters:
   run_id: 7_7_noah
 
   load_epoch: 2999
+  source: 'drums'
 
   #Generator Hyperparameters
   n_mel_channels: 80

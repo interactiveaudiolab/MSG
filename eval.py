@@ -1,125 +1,192 @@
 import os
+import argparse
+import re
+import yaml
 import numpy as np
 import nussl
 import librosa
 from scipy.spatial.distance import cosine
 
 import torch
-from torch import nn
 
-from libraries.models.MelGAN import Audio2Mel, GeneratorMel
-from libraries.mlp.WaveDataset import MusicDataset
-
-n_mel_channels = 80
-ngf = 32
-n_residual_layers = 3
-num_D = 3
-ndf = 16
-n_layers_D = 4
-
-G1 = GeneratorMel(n_mel_channels, ngf, n_residual_layers)
-G1.load_state_dict(torch.load("2999netG.pt"))
+from models.MelGAN import Audio2Mel, GeneratorMel
+from datasets.WaveDataset import MusicDataset
 
 
-#change this
-clean_path ='/content/drive/MyDrive/Pix2Pix/original_test_sources'
-dirty_path ='/content/drive/MyDrive/Pix2Pix/demucs_test_separated_flat'
+pattern = re.compile('[\W_]+')
 
-test_dirty = []
-test_clean = []
+np.random.seed(0)
+torch.manual_seed(0)
 
-for s in os.listdir(clean_path):
-    if 'drums' in s:
-        test_dirty.append(dirty_path + '/' + s)
-        test_clean.append(clean_path +'/' + s)
+def parse_args(args_list):
+    arg_names = [pattern.sub('', s) for s in args_list[::2]]
+    result = {}
+    for i, k in enumerate(arg_names):
+        result[k] = _sanitize_value(args_list[2*i+1])
+    return result
 
-ds_test = MusicDataset(test_dirty,test_clean,44100,44100)
-G1.to('cuda')
-G1.eval()
-start = 7
-fft = Audio2Mel(n_mel_channels=n_mel_channels).cuda()
+def _sanitize_value(v):
+    try:
+        return int(v)
+    except ValueError:
+        pass
 
-si_sdr_noisy = []
-si_sdr_generated = []
+    try:
+        return float(v)
+    except ValueError:
+        pass
 
-sd_sdr_noisy = []
-sd_sdr_generated = []
+    if v.lower() in ['null', 'none']:
+        return None
 
-si_sar_noisy = []
-si_sar_generated = []
+    if isinstance(v, str):
+        if v.lower() == 'false':
+            return False
+        if v.lower() == 'true':
+            return True
 
-si_sir_noisy = []
-si_sir_generated = []
+    return v
 
-snr_noisy = []
-snr_generated = []
+def update_parameters(exp_dict, params_dict):
+    sanitized_exp_keys = {pattern.sub('', key): key for key in exp_dict.keys()}
+    for param_key, param_val in params_dict.items():
+        if param_key in sanitized_exp_keys.keys():
+            exp_dict[sanitized_exp_keys[param_key]] = param_val
+    return exp_dict
 
-noisy_cosine = []
-generated_cosine = []
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--exp', '-e', type=str, help='Experiment yaml file')
+    exp, exp_args = parser.parse_known_args()
+    exp_file_path = exp.exp
 
-cos = nn.CosineSimilarity()
+    if not exp_file_path:
+        raise ParameterError('Must have an experiment definition `--exp-def`!')
 
-with torch.no_grad():
-    for start in range(50):
-        clean1 = np.array([])
-        noisy1 = np.array([])
-        aud1 = np.array([])
-    for i in range(7*start, 7*start+7):
-        n,c = ds_test[i]
-        clean1 = np.concatenate((clean1,c))
-        noisy1 = np.concatenate((noisy1,n))
+    exp_dict = yaml.load(open(os.path.join(exp_file_path), 'r'),
+                         Loader=yaml.FullLoader)
 
-        s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
-        x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
+    if len(exp_args) > 0:
+        try:
+            new_args = parse_args(exp_args)
+        except IndexError:
+            raise ParameterError('Cannot parse input parameters!')
+        new_dict = update_parameters(exp_dict['parameters'], new_args)
+        exp_dict['parameters'] = new_dict
 
-        a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
-        aud1 = np.concatenate((aud1,a))
+    params = exp_dict['parameters']
 
-    c = nussl.AudioSignal(audio_data_array=clean1)
-    n = nussl.AudioSignal(audio_data_array=noisy1)
-    g = nussl.AudioSignal(audio_data_array=aud1)
-    bss_eval = nussl.evaluation.BSSEvalScale(
-    true_sources_list=[c],
-    estimated_sources_list=[n]
-    )
+    G1 = GeneratorMel(params['n_mel_channels'], params['ngf'], params['n_residual_layers'])
+    G1.load_state_dict(torch.load( params['model_load_dir']+ str(params['load_epoch']) + 'netG.pt'))
 
-    noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
-                                    fmax=8000)
-    clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
-                                    fmax=8000)
-    generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
-                                    fmax=8000)
 
-    noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
-    generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
+  #change this
 
-    noisy_eval = bss_eval.evaluate()
 
-    bss_eval = nussl.evaluation.BSSEvalScale(
-        true_sources_list=[c],
-        estimated_sources_list=[g]
-    )
-    gen_eval = bss_eval.evaluate()
+    test_dirty = []
+    test_clean = []
 
-    si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
-    si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
-    sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
-    sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
-    si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
-    si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
-    si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
-    si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
-    snr_noisy.append(noisy_eval['source_0']['SNR'])
-    snr_generated.append(gen_eval['source_0']['SNR'])
-print('Original SI-SDR', np.mean(si_sdr_noisy))
-print('Our SI-SDR', np.mean(si_sdr_generated))
-print('\nOriginal SD-SDR', np.mean(sd_sdr_noisy))
-print('Our SD-SDR', np.mean(sd_sdr_generated))
-print('\nOriginal SI-SAR', np.mean(si_sar_noisy))
-print('Our SI-SAR', np.mean(si_sar_generated))
-print('\nOriginal SI-SIR', np.mean(si_sir_noisy))
-print('Our SI-SIR', np.mean(si_sir_generated))
-print('\nOriginal SNR', np.mean(snr_noisy))
-print('Our SNR', np.mean(snr_generated))
-print('\nDemucs Mean Spectral Cosine Distance', np.mean(noisy_cosine))
-print('MSG Mean Spectral Cosine Distance', np.mean(generated_cosine))
+    for s in os.listdir(params['original_sources_path']):
+        if params['source'] in s:
+            test_dirty.append(params['separated_sources_path']  + s)
+            test_clean.append(params['original_sources_path']  + s)
+
+    ds_test = MusicDataset(test_dirty,test_clean,44100,44100)
+    G1.to('cuda')
+    G1.eval()
+    fft = Audio2Mel(n_mel_channels=params['n_mel_channels']).cuda()
+
+    si_sdr_noisy = []
+    si_sdr_generated = []
+
+    sd_sdr_noisy = []
+    sd_sdr_generated = []
+
+    si_sar_noisy = []
+    si_sar_generated = []
+
+    si_sir_noisy = []
+    si_sir_generated = []
+
+    snr_noisy = []
+    snr_generated = []
+
+    noisy_cosine = []
+    generated_cosine = []
+
+
+    with torch.no_grad():
+        for start in range(50):
+            clean1 = np.array([])
+            noisy1 = np.array([])
+            aud1 = np.array([])
+            for i in range(7*start, 7*start+7):
+                n,c = ds_test[i]
+                clean1 = np.concatenate((clean1,c))
+                noisy1 = np.concatenate((noisy1,n))
+
+                s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
+                x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
+
+                a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
+                aud1 = np.concatenate((aud1,a))
+
+            c = nussl.AudioSignal(audio_data_array=clean1)
+            n = nussl.AudioSignal(audio_data_array=noisy1)
+            g = nussl.AudioSignal(audio_data_array=aud1)
+            bss_eval = nussl.evaluation.BSSEvalScale(
+            true_sources_list=[c],
+            estimated_sources_list=[n]
+            )
+
+            noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
+                                            fmax=8000)
+            clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
+                                            fmax=8000)
+            generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
+                                            fmax=8000)
+
+            noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
+            generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
+
+            noisy_eval = bss_eval.evaluate()
+
+            bss_eval = nussl.evaluation.BSSEvalScale(
+                true_sources_list=[c],
+                estimated_sources_list=[g]
+            )
+            gen_eval = bss_eval.evaluate()
+
+            si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
+            si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
+            sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
+            sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
+            si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
+            si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
+            si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
+            si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
+            snr_noisy.append(noisy_eval['source_0']['SNR'])
+            snr_generated.append(gen_eval['source_0']['SNR'])
+    lines = []
+    lines.append('Original SI-SDR: '+ str(np.mean(si_sdr_noisy)))
+    lines.append('Our SI-SDR: ' + str(np.mean(si_sdr_generated)))
+    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sd_sdr_noisy)))
+    lines.append('Our SD-SDR: '+ str(np.mean(sd_sdr_generated)))
+    lines.append('\nOriginal SI-SAR: '+ str(np.mean(si_sar_noisy)))
+    lines.append('Our SI-SAR: '+ str(np.mean(si_sar_generated)))
+    lines.append('\nOriginal SI-SIR: ' + str(np.mean(si_sir_noisy)))
+    lines.append('Our SI-SIR: '+ str(np.mean(si_sir_generated)))
+    lines.append('\nOriginal SNR: '+ str(np.mean(snr_noisy)))
+    lines.append('Our SNR: '+ str(np.mean(snr_generated)))
+    lines.append('\nDemucs Mean Spectral Cosine Distance: '+ str(np.mean(noisy_cosine)))
+    lines.append('MSG Mean Spectral Cosine Distance: '+ str(np.mean(generated_cosine)))
+
+    with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
+      f.write('\n'.join(lines))
+    
+
+class ParameterError(Exception):
+    pass
+
+if __name__ == '__main__':
+    main()

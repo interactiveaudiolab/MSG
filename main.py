@@ -14,13 +14,14 @@ import librosa
 
 from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
 from datasets.WaveDataset import MusicDataset
-from experiments.experiment_template.train import train
+from datasets.Wrapper import DatasetWrapper
 
 
 pattern = re.compile('[\W_]+')
 
 np.random.seed(0)
 torch.manual_seed(0)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def parse_args(args_list):
     arg_names = [pattern.sub('', s) for s in args_list[::2]]
@@ -91,6 +92,15 @@ def initialize_dataloader(separated_sources_path, original_sources_path, source,
                                 num_workers=n_cpu, shuffle=True)
     return train_loader, valid_loader
 
+def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cpu, **kwargs):
+    train_set = DatasetWrapper(train_path, source, **kwargs)
+    train_loader = DataLoader(train_set, batch_size=batch_size,
+                               num_workers=n_cpu, shuffle=True)
+    valid_set = DatasetWrapper(valid_path, source, **kwargs)
+    valid_loader = DataLoader(valid_set, batch_size=batch_size,
+                               num_workers=n_cpu, shuffle=True)
+    return train_loader, valid_loader
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp', '-e', type=str, help='Experiment yaml file')
@@ -119,21 +129,25 @@ def main():
 
     netG = GeneratorMel(
         config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
-        ).cuda()
+        ).to(device)
     netD = DiscriminatorMel(
             config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
-        ).cuda()
-    fft = Audio2Mel(n_mel_channels=config.n_mel_channels).cuda()
+        ).to(device)
+    fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     optD = torch.optim.Adam(netD.parameters(), lr=config.lr, betas=(config.b1,config.b2))
 
-    train_loader, valid_loader = initialize_dataloader(
-                                    config.separated_sources_path,
-                                    config.original_sources_path,
+    train_loader, valid_loader = initialize_nussl_dataloader(
+                                    config.train_sources_path,
+                                    config.valid_sources_path,
                                     config.source,
                                     config.batch_size,
-                                    config.n_cpu
+                                    config.n_cpu,
+                                    mix_folder = config.mix_folder,
+                                    sample_rate = config.sample_rate,
+                                    segment_dur = config.segment_duration,
+                                    verbose = config.verbose
                                     )
 
 
@@ -167,8 +181,8 @@ def main():
             torch.save(optG, config.model_save_dir  +  str(epoch) + "optG.pt")
             torch.save(optD, config.model_save_dir  +  str(epoch) + "optD.pt")
         for iterno, x_t in enumerate(train_loader):
-            x_t_0 = x_t[0].unsqueeze(1).float().cuda()
-            x_t_1 = x_t[1].unsqueeze(1).float().cuda()
+            x_t_0 = x_t[0].unsqueeze(1).float().to(device)
+            x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             s_t = fft(x_t_0)
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
@@ -183,8 +197,8 @@ def main():
 
             sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
-            D_fake_det = netD(x_pred_t.cuda().detach())
-            D_real = netD(x_t_1.cuda())
+            D_fake_det = netD(x_pred_t.to(device).detach())
+            D_real = netD(x_t_1.to(device))
 
             loss_D = 0
             for scale in D_fake_det:
@@ -198,7 +212,7 @@ def main():
             ###################
             # Train Generator #
             ###################
-            D_fake = netD(x_pred_t.cuda())
+            D_fake = netD(x_pred_t.to(device))
             loss_G = 0
             for scale in D_fake:
                 loss_G += -scale[-1].mean()

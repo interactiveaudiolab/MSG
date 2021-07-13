@@ -18,7 +18,7 @@ parameters:
   # Training Hyperparameters
   start_epoch: 0 
   n_epochs: 3000
-  pretrain_epoch: 100
+  pretrain_epoch: 0
   checkpoint_interval: 100
   batch_size: 16
   n_cpu: 1

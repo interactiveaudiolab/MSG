@@ -225,10 +225,7 @@ def main():
                     loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)
-                est_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
-                (loss_G + config.lambda_feat * loss_feat + .5 * 
-                                            F.l1_loss(true_spec,est_spec)).backward()
+                (loss_G + config.lambda_feat * loss_feat).backward()
                 optG.step()
             else:
                 true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)

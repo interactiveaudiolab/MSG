@@ -101,6 +101,17 @@ def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cp
                                num_workers=n_cpu, shuffle=True)
     return train_loader, valid_loader
 
+def save_model(save_path, netG, netD, optG, optD, epoch):
+    '''
+    Input: save_path (string), netG (state_dict), netD (state_dict), 
+    optG (torch.optim), optD(torch.optim)
+    '''
+    torch.save(netG, save_path +  str(epoch) + "netG.pt")
+    torch.save(netD, save_path  +  str(epoch) + "netD.pt")
+    torch.save(optG, save_path   +  str(epoch) + "optG.pt")
+    torch.save(optD, save_path   +  str(epoch) + "optD.pt")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp', '-e', type=str, help='Experiment yaml file')
@@ -176,10 +187,7 @@ def main():
 
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % 100 == 0 and epoch != start_epoch:
-            torch.save(netG.state_dict(), config.model_save_dir +  str(epoch) + "netG.pt")
-            torch.save(netD.state_dict(), config.model_save_dir  +  str(epoch) + "netD.pt")
-            torch.save(optG, config.model_save_dir  +  str(epoch) + "optG.pt")
-            torch.save(optD, config.model_save_dir  +  str(epoch) + "optD.pt")
+            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict, optG,optD,epoch)
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
@@ -193,8 +201,6 @@ def main():
             # Train Discriminator #
             #######################
             sdr = SISDRLoss()
-
-
             sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())

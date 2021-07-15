@@ -18,9 +18,6 @@ from datasets.Wrapper import DatasetWrapper
 
 
 pattern = re.compile('[\W_]+')
-
-np.random.seed(0)
-torch.manual_seed(0)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def parse_args(args_list):
@@ -59,38 +56,6 @@ def update_parameters(exp_dict, params_dict):
             exp_dict[sanitized_exp_keys[param_key]] = param_val
     return exp_dict
 
-def initialize_dataloader(separated_sources_path, original_sources_path, source, batch_size, n_cpu):
-
-    '''
-    Creates train/valid dataloader objects used in training
-
-    input: config (dict) - wandb config containing hyperparameters
-
-    output: train_loader (DataLoader), valid_loader (DataLoader)
-    '''
-
-    train_dirty = []
-    train_clean = []
-    val_dirty = []
-    val_clean = []
-    dirty_data = [elem for elem in os.listdir(separated_sources_path) if source in elem]
-
-    for s in dirty_data:
-        if np.random.rand() < .9:
-            train_dirty.append(separated_sources_path + s)
-            train_clean.append(original_sources_path  + s)
-        else:
-            val_dirty.append(separated_sources_path + s)
-            val_clean.append(original_sources_path  + s)
-
-    ds_valid = MusicDataset(val_dirty, val_clean, 44100,44100)
-    ds_train = MusicDataset(train_dirty, train_clean, 44100, 44100)
-
-    valid_loader = DataLoader(ds_valid, batch_size=batch_size, 
-                                num_workers=n_cpu, shuffle=False)
-    train_loader = DataLoader(ds_train, batch_size=batch_size, 
-                                num_workers=n_cpu, shuffle=True)
-    return train_loader, valid_loader
 
 def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cpu, **kwargs):
     train_set = DatasetWrapper(train_path, source, **kwargs)
@@ -137,7 +102,9 @@ def main():
     wandb.init(config=params)
     config = wandb.config
 
-
+    np.random.seed(config.random_seed)
+    torch.manual_seed(config.random_seed)
+    
     netG = GeneratorMel(
         config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
         ).to(device)
@@ -186,7 +153,7 @@ def main():
     sdr = SISDRLoss()
 
     for epoch in range(start_epoch, config.n_epochs):
-        if (epoch+1) % 100 == 0 and epoch != start_epoch:
+        if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch:
             save_model(config.model_save_dir, netG.state_dict(), netD.state_dict, optG,optD,epoch)
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)

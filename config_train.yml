@@ -16,6 +16,7 @@ parameters:
   verbose: True
 
   # Training Hyperparameters
+  random_seed: 0
   start_epoch: 0 
   n_epochs: 3000
   pretrain_epoch: 0

@@ -97,10 +97,10 @@ def run_validate(valid_loader, netG, netD, config):
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
 
-            if iterno == config.random_sample:
-                output_aud = (x_t_0.squeeze(0).squeeze(1).cpu().numpy(), 
-                                x_t_1.squeeze(0).squeeze(1).cpu().numpy(), 
-                                x_pred_t.squeeze(0).squeeze(1).cpu().numpy())
+            if iterno == 0:
+                output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
+                                x_t_1.squeeze(0).squeeze(0).cpu().numpy(), 
+                                x_pred_t.squeeze(0).squeeze(0).cpu().numpy())
 
             # Calculate valid reconstruction loss
 
@@ -140,7 +140,7 @@ def run_validate(valid_loader, netG, netD, config):
             gen_losses.append(loss_G.item())
             feature_losses.append(loss_feat.item())
             reconstruction_losses.append(s_error.item())
-            sdrs.append(sdr_loss)
+            sdrs.append(sdr_loss.cpu())
         return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), np.mean(sdrs), output_aud
 
 
@@ -280,7 +280,6 @@ def main():
             writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
             writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
             writer.add_scalar("loss/sdr", costs[-1][4], steps)
-            steps += 1
 
             sys.stdout.write(f'\r[Epoch {epoch}, Batch {iterno}]:\
                                 [Generator Loss: {costs[-1][1]:.4f}]\
@@ -298,9 +297,9 @@ def main():
             
             })
 
-            if steps % config.validation_steps: 
+            if steps % config.validation_steps==0: 
                 valid_d, valid_g, valid_feat, valid_s, valid_sdr, aud = run_validate(valid_loader, netG, netD, config)
-                if steps ==0:
+                if steps==0:
                     sf.write('validation_original.wav', aud[1] ,config.sample_rate)
                     sf.write('validation_demucs.wav', aud[0] ,config.sample_rate)
                     wandb.log({"Validation Audio": 
@@ -344,11 +343,10 @@ def main():
                                                     y_axis='mel', sr=config.sample_rate,
                                                     fmax=8000, ax=axes[i])
                     axes[i].set(title=titles[i])
-                fig.save(f'spectrogram_{steps}.png')
+                plt.savefig(f'spectrogram_{steps}.png')
                 wandb.log({f'Spectrograms, {steps} Steps': 
                     [wandb.Image(imageio.imread(f'spectrogram_{steps}.png'))]})
-
-
+            steps+=1
 
 class ParameterError(Exception):
     pass

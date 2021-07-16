@@ -4,15 +4,22 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/MelGan-Imputation/saves_baseline/'
-  model_load_dir: '/drive/MelGan-Imputation/saves_baseline/'
-  original_sources_path: '/drive/MelGan-Imputation/datasets/original_train_sources/'
-  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_train_flattened/'
+  model_save_dir: '/drive/development_folder/saves_baseline/'
+  model_load_dir: '/drive/development_folder/saves_baseline/'
+  train_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetFolder/'
+  valid_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetFolder/'
+
+  # Dataloader parameters
+  sample_rate: 44100
+  mix_folder: 'mixture'
+  segment_duration: 1.0
+  verbose: True
 
   # Training Hyperparameters
+  random_seed: 0
   start_epoch: 0 
   n_epochs: 3000
-  pretrain_epoch: 100
+  pretrain_epoch: 0
   checkpoint_interval: 100
   batch_size: 16
   n_cpu: 1

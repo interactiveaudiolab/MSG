@@ -4,8 +4,8 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/development_folder/saves_baseline_weekend/'
-  model_load_dir: '/drive/development_folder/saves_baseline_weekend/'
+  model_save_dir: '/drive/development_folder/saves_baseline_bass/'
+  model_load_dir: '/drive/development_folder/saves_baseline_bass/'
   train_sources_path: '/drive/DemucsDataset/SalientSourceDrumsTrain/'
   valid_sources_path: '/drive/DemucsDataset/SalientSourceValidationDatasetFolder/'
 
@@ -21,11 +21,11 @@ parameters:
   n_epochs: 3000
   pretrain_epoch: 0
   validation_steps: 5000
-  random_sample : 10
-  checkpoint_interval: 100
+  random_sample : 1200
+  checkpoint_interval: 25
   batch_size: 64
   n_cpu: 4
-  source: 'drums'
+  source: 'bass'
 
   # Optimizer Hyperparameters
   lr: 0.0001

@@ -88,16 +88,14 @@ def run_validate(valid_loader, netG, netD, config):
     output_aud = None
 
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
-
-    for iterno, x_t in enumerate(valid_loader):
-        with torch.no_grad():
+    with torch.no_grad():
+        for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             s_t = fft(x_t_0)
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
-
-            if iterno == 0:
+            if iterno == int(config.random_sample):
                 output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
                                 x_t_1.squeeze(0).squeeze(0).cpu().numpy(), 
                                 x_pred_t.squeeze(0).squeeze(0).cpu().numpy())

@@ -6,7 +6,7 @@ parameters:
   # Directories
   model_save_dir: '/drive/development_folder/saves_baseline_bass/'
   model_load_dir: '/drive/development_folder/saves_baseline_bass/'
-  train_sources_path: '/drive/DemucsDataset/SalientSourceDrumsTrain/'
+  train_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetFolder/'
   valid_sources_path: '/drive/DemucsDataset/SalientSourceValidationDatasetFolder/'
 
   # Dataloader parameters

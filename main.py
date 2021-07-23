@@ -227,6 +227,7 @@ def main():
             m_t = fft(x_t_2)
             print(s_t.shape)
             print(m_t.shape)
+            s_t = s_t.unsqueeze(1)
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)

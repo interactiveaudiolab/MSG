@@ -222,7 +222,11 @@ def main():
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             s_t = fft(x_t_0)
+            m_t = fft(x_t_2)
+            print(s_t.shape)
+            print(m_t.shape)
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)

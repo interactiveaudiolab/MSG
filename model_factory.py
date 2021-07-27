@@ -1,17 +1,21 @@
 import torch
-from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from models.MelGAN import Audio2Mel, GeneratorMel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
 
 class ModelFactory():
-    def __init__(self, model, netG_params, netD_params ,optimizer, optG_params, optD_params):
+    def __init__(self, model, use_mix, netG_params, netD_params ,optimizer, optG_params, optD_params):
         self.model = model
         self.netG_params = netG_params
         self.netD_params = netD_params
         self.optimizer = optimizer
         self.optG_params = optG_params
         self.optD_params = optD_params
+        self.use_mix = use_mix
     def getModel(self):
         if self.model == 'MelGAN':
-            netG = GeneratorMel(self.netG_params)
+            if self.use_mix:
+                netG = GeneratorMelMix(self.netG_params)
+            else:
+                netG = GeneratorMel(self.netG_params)
             netD = DiscriminatorMel(self.netD_params)
         if self.optimizer == 'Adam':
             optG = torch.optim.Adam(netG.parameters(), lr=self.optG_params.lr, betas=(self.optG_params.b1,self.optG_params.b2))

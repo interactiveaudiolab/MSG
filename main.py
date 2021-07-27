@@ -16,7 +16,7 @@ import imageio
 
 
 
-from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
 
@@ -170,7 +170,7 @@ def main():
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
     
-    netG = GeneratorMel(
+    netG = GeneratorMelMix(
         config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
         ).to(device)
     netD = DiscriminatorMel(
@@ -223,11 +223,9 @@ def main():
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            m_t = fft(x_t_2)
-            print(s_t.shape)
-            print(m_t.shape)
-            s_t = s_t.unsqueeze(1)
+            s_t = fft(x_t_0).unsqueeze(1)
+            m_t = fft(x_t_2).unsqueeze(1)
+            sm_t = torch.cat((s_t,m_t),dim=1)
             x_pred_t = netG(s_t,x_t_0)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)

@@ -289,6 +289,8 @@ class GeneratorMelMix(nn.Module):
         self.skip_cxn = skip_cxn
         self.hop_length = np.prod(ratios)
         mult = int(2 ** len(ratios))
+        
+        self.inconv= nn.Conv2d(2,1,1)
 
         model = [
             nn.ReflectionPad1d(3),
@@ -325,7 +327,8 @@ class GeneratorMelMix(nn.Module):
         self.apply(weights_init)
 
     def forward(self, x,aud):
-        imputed = center_trim(self.model(x),44100)
+        x = self.inconv(x)
+        imputed = center_trim(self.model(x.squeeze(1)),44100)
         if not self.skip_cxn:
             return imputed
         else:

@@ -92,8 +92,11 @@ def run_validate(valid_loader, netG, netD, config):
         for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            x_pred_t = netG(s_t,x_t_0)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
+            s_t = fft(x_t_0).unsqueeze(1)
+            m_t = fft(x_t_2).unsqueeze(1)
+            sm_t = torch.cat((s_t,m_t),dim=1)
+            x_pred_t = netG(sm_t,x_t_0)
             s_pred_t = fft(x_pred_t)
             if iterno == int(config.random_sample):
                 output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
@@ -226,7 +229,7 @@ def main():
             s_t = fft(x_t_0).unsqueeze(1)
             m_t = fft(x_t_2).unsqueeze(1)
             sm_t = torch.cat((s_t,m_t),dim=1)
-            x_pred_t = netG(s_t,x_t_0)
+            x_pred_t = netG(sm_t,x_t_0)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)
             s_error = F.l1_loss(s_test, s_pred_t)

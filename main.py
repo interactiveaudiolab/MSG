@@ -17,6 +17,7 @@ import imageio
 
 
 from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from models.Demucs import Demucs
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
 
@@ -170,9 +171,10 @@ def main():
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
     
-    netG = GeneratorMel(
-        config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
-        ).to(device)
+    #netG = GeneratorMel(
+    #    config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
+    #    ).to(device)
+    netG = Demucs(['drums'], segment_length=44100)
     netD = DiscriminatorMel(
             config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
         ).to(device)

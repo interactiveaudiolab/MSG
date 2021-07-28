@@ -313,16 +313,16 @@ class GeneratorMelMix(nn.Module):
         self.hop_length = np.prod(ratios)
         mult = int(2 ** len(ratios))
         
-        self.inconv= nn.Conv2d(2,1,1)
+        self.combine_layer= nn.Conv2d(2,1,1)
 
-        model = [
+        model_mix = [
             nn.ReflectionPad1d(3),
             WNConv1d(input_size, mult * ngf, kernel_size=7, padding=0),
         ]
 
         # Upsample to raw audio scale
         for _, r in enumerate(ratios):
-            model += [
+            model_mix += [
                 nn.LeakyReLU(0.2),
                 WNConvTranspose1d(
                     mult * ngf,
@@ -335,23 +335,53 @@ class GeneratorMelMix(nn.Module):
             ]
 
             for j in range(n_residual_layers):
-                model += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
+                model_mix += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
+
+            mult //= 2
+        
+        model_source = [
+            nn.ReflectionPad1d(3),
+            WNConv1d(input_size, mult * ngf, kernel_size=7, padding=0),
+        ]
+
+        # Upsample to raw audio scale
+        for _, r in enumerate(ratios):
+            model_source += [
+                nn.LeakyReLU(0.2),
+                WNConvTranspose1d(
+                    mult * ngf,
+                    mult * ngf // 2,
+                    kernel_size=r * 2,
+                    stride=r,
+                    padding=r // 2 + r % 2,
+                    output_padding=r % 2,
+                ),
+            ]
+
+            for j in range(n_residual_layers):
+                model_mix += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
 
             mult //= 2
 
-        model += [
+        model_comb = [
             nn.LeakyReLU(0.2),
             nn.ReflectionPad1d(3),
             WNConv1d(ngf, 1, kernel_size=7, padding=0),
             nn.Tanh(),
         ]
 
-        self.model = nn.Sequential(*model)
+        self.model_mix = nn.Sequential(*model_mix)
+        self.model_source = nn.Sequential(*model_source)
+        self.model_comb = nn.Sequential(*model_comb)
         self.apply(weights_init)
 
-    def forward(self, x,aud):
-        x = self.inconv(x)
-        imputed = center_trim(self.model(x.squeeze(1)), 44100)
+    def forward(self, source, mix, aud):
+        
+        mix_x = self.model_mix(mix)
+        source_x = self.model_source(source)
+        x = self.combine_layer(torch.cat((mix_x.unsqueeze(1),source_x.unsqueeze(1)), dim=1))
+        imputed = center_trim(self.model_comb(x.squeeze(1)), 44100)
+
         if not self.skip_cxn:
             return imputed
         else:

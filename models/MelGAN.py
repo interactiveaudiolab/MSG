@@ -23,6 +23,14 @@ def WNConvTranspose1d(*args, **kwargs):
     return weight_norm(nn.ConvTranspose1d(*args, **kwargs))
 
 
+def WNConv2d(*args, **kwargs):
+    return weight_norm(nn.Conv2d(*args, **kwargs))
+
+
+def WNConvTranspose2d(*args, **kwargs):
+    return weight_norm(nn.ConvTranspose2d(*args, **kwargs))
+
+
 class Audio2Mel(nn.Module):
     def __init__(
         self,
@@ -84,6 +92,21 @@ class ResnetBlock(nn.Module):
     def forward(self, x):
         return self.shortcut(x) + self.block(x)
 
+
+class ResnetBlock2(nn.Module):
+    def __init__(self, dim, dilation=1):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.LeakyReLU(0.2),
+            nn.ReflectionPad2d(dilation),
+            WNConv2d(dim, dim, kernel_size=3, dilation=dilation),
+            nn.LeakyReLU(0.2),
+            WNConv2d(dim, dim, kernel_size=1),
+        )
+        self.shortcut = WNConv2d(dim, dim, kernel_size=1)
+
+    def forward(self, x):
+        return self.shortcut(x) + self.block(x)
 
 class GeneratorMel(nn.Module):
     def __init__(self, input_size, ngf, n_residual_layers,skip_cxn=False):
@@ -328,7 +351,7 @@ class GeneratorMelMix(nn.Module):
 
     def forward(self, x,aud):
         x = self.inconv(x)
-        imputed = center_trim(self.model(x.squeeze(1)),44100)
+        imputed = center_trim(self.model(x.squeeze(1)), 44100)
         if not self.skip_cxn:
             return imputed
         else:

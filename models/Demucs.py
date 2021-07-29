@@ -58,7 +58,8 @@ class Demucs(nn.Module):
                  context=3,
                  normalize=False,
                  samplerate=44100,
-                 segment_length=4 * 10 * 44100):
+                 segment_length=4 * 10 * 44100,
+                 skip_cxn=False):
         """
         Args:
             sources (list[str]): list of source names
@@ -100,6 +101,7 @@ class Demucs(nn.Module):
         self.normalize = normalize
         self.samplerate = samplerate
         self.segment_length = segment_length
+        self.skip_cxn = skip_cxn
 
         self.encoder = nn.ModuleList()
         self.decoder = nn.ModuleList()
@@ -166,8 +168,8 @@ class Demucs(nn.Module):
             length = math.ceil(length / 2)
         return int(length)
 
-    def forward(self, mix):
-        x = mix
+    def forward(self, source, aud):
+        x = source
 
         if self.normalize:
             mono = mix.mean(dim=1, keepdim=True)
@@ -195,6 +197,9 @@ class Demucs(nn.Module):
 
         if self.resample:
             x = julius.resample_frac(x, 2, 1)
+        x = center_trim(x,self.segment_length)
         x = x * std + mean
         x = x.view(x.size(0), len(self.sources), self.audio_channels, x.size(-1))
+        if self.skip_cxn:
+            return x + aud
         return x

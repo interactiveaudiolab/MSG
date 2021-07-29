@@ -4,9 +4,9 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/development_folder/saves_baseline_bass/'
-  model_load_dir: '/drive/development_folder/saves_baseline_bass/'
-  train_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetFolder/'
+  model_save_dir: '/drive/demucs-model/saves_demucs_v1/'
+  model_load_dir: '/drive/demucs-model/saves_demucs_v1/'
+  train_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetShortenedFolder/'
   valid_sources_path: '/drive/DemucsDataset/SalientSourceValidationDatasetFolder/'
 
   # Dataloader parameters
@@ -17,15 +17,15 @@ parameters:
 
   # Training Hyperparameters
   random_seed: 0
-  start_epoch: 0 
+  start_epoch: 0
   n_epochs: 3000
   pretrain_epoch: 0
   validation_steps: 5000
   random_sample : 1200
   checkpoint_interval: 25
-  batch_size: 64
-  n_cpu: 4
-  source: 'bass'
+  batch_size: 32
+  n_cpu: 2
+  source: 'drums'
 
   # Optimizer Hyperparameters
   lr: 0.0001

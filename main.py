@@ -17,6 +17,7 @@ import imageio
 
 
 from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
+from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
 
@@ -92,12 +93,11 @@ def run_validate(valid_loader, netG, netD, config):
         for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            m_t = fft(x_t_2)
-            
-            x_pred_t = netG(s_t,m_t,x_t_0)
+            inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
+            s_test = fft(x_t_1)
+            s_error = F.l1_loss(s_test, s_pred_t)
             if iterno == int(config.random_sample):
                 output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
                                 x_t_1.squeeze(0).squeeze(0).cpu().numpy(), 
@@ -173,9 +173,10 @@ def main():
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
     
-    netG = GeneratorMelMix(
-        config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
-        ).to(device)
+    #netG = GeneratorMel(
+    #    config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
+    #    ).to(device)
+    netG = Demucs(['drums'],audio_channels=1,  segment_length=44100).to(device)
     netD = DiscriminatorMel(
             config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
         ).to(device)
@@ -225,10 +226,8 @@ def main():
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            m_t = fft(x_t_2)
-            x_pred_t = netG(s_t,m_t,x_t_0)
+            inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)
             s_error = F.l1_loss(s_test, s_pred_t)

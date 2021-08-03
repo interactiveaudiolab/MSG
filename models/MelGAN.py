@@ -359,7 +359,7 @@ class GeneratorMelMix(nn.Module):
             ]
 
             for j in range(n_residual_layers):
-                model_mix += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
+                model_source += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
 
             mult //= 2
 
@@ -371,7 +371,9 @@ class GeneratorMelMix(nn.Module):
         ]
 
         self.model_mix = nn.Sequential(*model_mix)
+        self.apply(weights_init)
         self.model_source = nn.Sequential(*model_source)
+        self.apply(weights_init)
         self.model_comb = nn.Sequential(*model_comb)
         self.apply(weights_init)
 

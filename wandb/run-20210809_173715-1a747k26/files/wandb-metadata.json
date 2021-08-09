@@ -1,0 +1,27 @@
+{
+    "os": "Linux-5.8.0-48-generic-x86_64-with-glibc2.29",
+    "python": "3.8.10",
+    "heartbeatAt": "2021-08-09T22:37:16.548519",
+    "startedAt": "2021-08-09T22:37:15.937209",
+    "docker": null,
+    "gpu": "GeForce GTX TITAN X",
+    "gpu_count": 3,
+    "cpu_count": 20,
+    "cuda": null,
+    "args": [
+        "-e",
+        "config_train.yml"
+    ],
+    "state": "running",
+    "program": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "https://github.com/interactiveaudiolab/MelGan-Imputation.git",
+        "commit": "e50c6f186fa35e9f62aceab5ecf4070fa4252f3a"
+    },
+    "email": "boazcogan@yahoo.com",
+    "root": "/home/boaz/development",
+    "host": "seethlord",
+    "username": "boaz",
+    "executable": "/media/CHONK/data/imputation/imputation/bin/python"
+}

@@ -24,6 +24,14 @@ from datasets.Wrapper import DatasetWrapper
 pattern = re.compile('[\W_]+')
 device = ""
 
+def create_saves_directory(directory_path, development_flag=False):
+    if development_flag:
+        return
+    if os.path.exists(directory_path):
+        raise Exception(f"The saves directory for {directory_path} already exists")
+    os.mkdir(directory_path)
+
+
 def parse_args(args_list):
     arg_names = [pattern.sub('', s) for s in args_list[::2]]
     result = {}
@@ -166,6 +174,8 @@ def main():
 
     wandb.init(config=params)
     config = wandb.config
+   
+    create_saves_directory(config.model_save_dir)
     
     global device
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")

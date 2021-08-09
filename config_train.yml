@@ -4,8 +4,8 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/development_folder/saves_baseline_bass/'
-  model_load_dir: '/drive/development_folder/saves_baseline_bass/'
+  model_save_dir: '/media/CHONK/data/imputation/saves_baseline_bass/'
+  model_load_dir: '/media/CHONK/data/imputation/saves_baseline_bass/'
   train_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceTrainDatasetShortenedFolder/'
   valid_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceValidationDatasetFolder/'
 

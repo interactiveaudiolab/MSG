@@ -178,7 +178,7 @@ def main():
     #netG = GeneratorMel(
     #    config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
     #    ).to(device)
-    netG = Demucs(['drums'],audio_channels=1,  segment_length=44100, skip_cxn = config.skip_cxn).to(device)
+    netG = Demucs(['drums'],audio_channels=2,  segment_length=44100, skip_cxn = config.skip_cxn).to(device)
     netD = DiscriminatorMel(
             config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
         ).to(device)
@@ -231,7 +231,7 @@ def main():
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             #s_t = fft(x_t_0)
             #print(x_t_0.shape)
-            inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
+            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)

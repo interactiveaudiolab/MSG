@@ -93,6 +93,7 @@ def run_validate(valid_loader, netG, netD, config):
         for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
             # s_t = fft(x_t_0)
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
@@ -225,6 +226,7 @@ def main():
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             #s_t = fft(x_t_0)
             #print(x_t_0.shape)
             inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
@@ -270,9 +272,7 @@ def main():
                 (loss_G + config.lambda_feat * loss_feat).backward()
                 optG.step()
             else:
-                true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)
-                est_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
-                F.l1_loss(true_spec,est_spec).backward()
+                F.l1_loss(x_t_0,x_pred_t).backward()
                 optG.step()
             ######################
             # Update tensorboard #

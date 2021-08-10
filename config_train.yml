@@ -4,10 +4,10 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_save_dir: '/drive/development_folder/saves_baseline_bass/'
-  model_load_dir: '/drive/development_folder/saves_baseline_bass/'
-  train_sources_path: '/drive/DemucsDataset/SalientSourceTrainDatasetFolder/'
-  valid_sources_path: '/drive/DemucsDataset/SalientSourceValidationDatasetFolder/'
+  model_save_dir: '/media/CHONK/data/imputation/saves_baseline_bass/'
+  model_load_dir: '/media/CHONK/data/imputation/saves_baseline_bass/'
+  train_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceTrainDatasetShortenedFolder/'
+  valid_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceValidationDatasetFolder/'
 
   # Dataloader parameters
   sample_rate: 44100
@@ -23,9 +23,10 @@ parameters:
   validation_steps: 5000
   random_sample : 1200
   checkpoint_interval: 25
-  batch_size: 64
+  batch_size: 16
   n_cpu: 4
   source: 'bass'
+  gpus: [1, 2]
 
   # Optimizer Hyperparameters
   lr: 0.0001

@@ -388,3 +388,48 @@ class GeneratorMelMix(nn.Module):
             return imputed
         else:
             return imputed + aud
+
+class SpecDiscriminator(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_conv = WNConv1d(in_channels, 80, 1)
+        self.in_channels = in_channels
+        self.layers = nn.ModuleList(
+            [
+                WNConv1d(80, 80, 5, 1, 2, padding_mode="reflect"),
+                WNConv1d(80, 160, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(160, 320, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(320, 640, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(640, 1280, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(1280, 1280, 5, 1, 2, padding_mode="reflect"),
+            ]
+        )
+        self.output = WNConv1d(1280, 1, 3, 1, 1)
+        
+    def spectrogram(self, x):
+        window_length = (self.in_channels - 1) * 2
+        hop_length = window_length // 4
+        spec = torch.stft(
+            x,
+            n_fft=window_length,
+            hop_length=hop_length,
+            win_length=window_length,
+            center=True,
+        )
+
+        real_part, imag_part = spec.unbind(-1)
+        magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
+        magnitude += 1e-5
+ 
+        return torch.log10(magnitude)
+    
+    def forward(self, x):
+        s = self.spectrogram(x)
+        fmaps = []
+        s = self.in_conv(s)
+        fmaps.append(s)
+        for i, layer in enumerate(self.layers):
+            s = F.leaky_relu(layer(s), 0.2)
+            fmaps.append(s)
+        fmaps.append(self.output(s))
+        return fmaps

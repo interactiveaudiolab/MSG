@@ -168,11 +168,11 @@ class Demucs(nn.Module):
             length = math.ceil(length / 2)
         return int(length)
 
-    def forward(self, mix, aud):
-        x = mix
+    def forward(self, source, aud):
+        x = source
 
         if self.normalize:
-            mono = mix.mean(dim=1, keepdim=True)
+            mono = source.mean(dim=1, keepdim=True)
             mean = mono.mean(dim=-1, keepdim=True)
             std = mono.std(dim=-1, keepdim=True)
         else:
@@ -197,6 +197,7 @@ class Demucs(nn.Module):
 
         if self.resample:
             x = julius.resample_frac(x, 2, 1)
+        x = center_trim(x,self.segment_length)
         x = x * std + mean
         x = x.view(x.size(0), len(self.sources), self.audio_channels, x.size(-1))
         if self.skip_cxn:

@@ -95,7 +95,7 @@ def run_validate(valid_loader, netG, netD, config):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
+            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
             # s_t = fft(x_t_0)
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
@@ -178,7 +178,6 @@ def main():
 
     ModelSelector = ModelFactory(config)
     
-
     netG = ModelSelector.generator().to(device)
     if config.multi_disc:
         netD, netD_spec = ModelSelector.discriminator().to(device)

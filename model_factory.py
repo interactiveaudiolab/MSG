@@ -1,26 +1,23 @@
-import torch
-from models.MelGAN import Audio2Mel, GeneratorMel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
+from models.MelGAN import GeneratorMel, GeneratorMelMix, DiscriminatorMel, SpecDiscriminator
+from models.Demucs import Demucs
 
 class ModelFactory():
-    def __init__(self, model, use_mix, netG_params, netD_params ,optimizer, optG_params, optD_params):
+    def __init__(self, model, use_mix, multi_disc):
         self.model = model
-        self.netG_params = netG_params
-        self.netD_params = netD_params
-        self.optimizer = optimizer
-        self.optG_params = optG_params
-        self.optD_params = optD_params
         self.use_mix = use_mix
-    def getModel(self):
-        if self.model == 'MelGAN':
+        self.multi_disc = multi_disc
+    def generator(self, *args, **kwargs):
+        if self.model == "melgan":
             if self.use_mix:
-                netG = GeneratorMelMix(self.netG_params)
+                return GeneratorMelMix(args,kwargs)
             else:
-                netG = GeneratorMel(self.netG_params)
-            netD = DiscriminatorMel(self.netD_params)
-        if self.optimizer == 'Adam':
-            optG = torch.optim.Adam(netG.parameters(), lr=self.optG_params.lr, betas=(self.optG_params.b1,self.optG_params.b2))
-            optD = torch.optim.Adam(netD.parameters(), lr=self.optD_params.lr, betas=(self.optD_params.b1,self.optD_params.b2))
-        if self.optimizer == 'SGD':
-            optG = torch.optim.SGD(netG.parameters(), lr=self.optG_params.lr)
-            optD = torch.optim.SGD(netD.parameters(), lr=self.optD_params.lr)
-        return netG, netD, optG, optD
+                return GeneratorMel(args,kwargs)
+        if self.model == "demucs":
+            return Demucs(args,kwargs)
+        else:
+            raise ValueError('Invalid Model')
+    def discriminator(self, in_channels, *args, **kwargs):
+        if self.multi_disc:
+            return DiscriminatorMel(args,kwargs), SpecDiscriminator(in_channels)
+        else:
+            return DiscriminatorMel(args,kwargs)

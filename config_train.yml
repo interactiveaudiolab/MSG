@@ -3,6 +3,11 @@ exp_name: MSG Demucs Bass
 id: msg_demucs_bass
 parameters:
 
+  # Model Parameters
+  model: 'demucs'
+  use_mix: True
+  multi_disc: False
+
   # Directories
   model_save_dir: '/media/CHONK/data/imputation/saves/saves_demucs_bass_mix/'
   model_load_dir: '/media/CHONK/data/imputation/saves/saves_baseline_drums/'

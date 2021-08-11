@@ -259,10 +259,10 @@ def main():
             for scale in D_real:
                 loss_D += F.relu(1 - scale[-1]).mean()
             
-            for scale in D_fake_det_spec:
-                loss_D_spec += F.relu(1 + scale[-1]).mean()
-            for scale in D_real_spec:
-                loss_D_spec += F.relu(1 - scale[-1]).mean()
+             
+            loss_D_spec += F.relu(1 + D_fake_det_spec[-1]).mean()
+             
+            loss_D_spec += F.relu(1 - D_real_spec[-1]).mean()
 
             if epoch >= config.pretrain_epoch:
                 netD.zero_grad()
@@ -281,8 +281,8 @@ def main():
             loss_G = 0
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
-            for scale in D_fake_spec:
-                loss_G += -scale[-1].mean()
+            
+            loss_G += -D_fake_spec[-1].mean()
             
             loss_feat = 0
             feat_weights = 4.0 / (config.n_layers_D + 1)
@@ -295,11 +295,11 @@ def main():
             wt = 4.0 / (config.n_layers_D_spec + 1)
             loss_feat_spec = 0
             for k in range(len(D_fake_spec)-1):
-                loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec.detach())
+                loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec[k].detach())
 
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat* loss_feat_spec).backward()
+                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
                 optG.step()
             else:
                 wav_loss = F.l1_loss(x_t_0,x_pred_t)

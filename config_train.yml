@@ -42,6 +42,7 @@ parameters:
   ngf: 32
   n_residual_layers: 3
   lambda_feat: 10
+  lambda_feat_spec: 10
   skip_cxn: True
 
   #Discriminator Hyperparameters

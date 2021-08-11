@@ -3,6 +3,7 @@ import sys
 import argparse
 import re
 import yaml
+from model_factory import ModelFactory
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
@@ -174,12 +175,11 @@ def main():
 
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
-    
-    #netG = GeneratorMel(
-    #    config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
-    #    ).to(device)
-    netG = Demucs(['drums'],audio_channels=2,  segment_length=44100, skip_cxn = config.skip_cxn,mixture=True).to(device)
-    netD = DiscriminatorMel(
+
+    ModelSelector = ModelFactory(config.model,config.use_mix,config.multi_disc)
+
+    netG = ModelSelector.generator(['drums'],audio_channels=2,  segment_length=44100, skip_cxn = config.skip_cxn).to(device)
+    netD = ModelSelector.discriminator(
             config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
         ).to(device)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)

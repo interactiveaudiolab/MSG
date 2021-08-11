@@ -7,6 +7,7 @@ parameters:
   model: 'demucs'
   use_mix: True
   multi_disc: False
+  audio_channels: 2
 
   # Directories
   model_save_dir: '/media/CHONK/data/imputation/saves/saves_demucs_bass_mix/'

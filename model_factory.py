@@ -2,22 +2,20 @@ from models.MelGAN import GeneratorMel, GeneratorMelMix, DiscriminatorMel, SpecD
 from models.Demucs import Demucs
 
 class ModelFactory():
-    def __init__(self, model, use_mix, multi_disc):
-        self.model = model
-        self.use_mix = use_mix
-        self.multi_disc = multi_disc
-    def generator(self, *args, **kwargs):
-        if self.model == "melgan":
-            if self.use_mix:
-                return GeneratorMelMix(args,kwargs)
+    def __init__(self, config):
+        self.config = config
+    def generator(self):
+        if self.config.model == "melgan":
+            if self.config.use_mix:
+                return GeneratorMelMix(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
             else:
-                return GeneratorMel(args,kwargs)
+                return GeneratorMel(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
         if self.model == "demucs":
-            return Demucs(args,kwargs)
+            return Demucs([self.config.source],audio_channels=self.config.audio_channels,  segment_length=int(self.config.segment_duration * self.config.sample_rate), skip_cxn = self.config.skip_cxn)
         else:
             raise ValueError('Invalid Model')
-    def discriminator(self, in_channels, *args, **kwargs):
+    def discriminator(self):
         if self.multi_disc:
-            return DiscriminatorMel(args,kwargs), SpecDiscriminator(in_channels)
+            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
         else:
-            return DiscriminatorMel(args,kwargs)
+            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)

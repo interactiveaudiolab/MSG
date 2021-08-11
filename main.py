@@ -176,13 +176,15 @@ def main():
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
 
-    ModelSelector = ModelFactory(config.model,config.use_mix,config.multi_disc)
+    ModelSelector = ModelFactory(config)
     
 
-    netG = ModelSelector.generator(['drums'],audio_channels=2,  segment_length=44100, skip_cxn = config.skip_cxn).to(device)
-    netD = ModelSelector.discriminator(
-            config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
-        ).to(device)
+    netG = ModelSelector.generator().to(device)
+    if config.multi_disc:
+        netD, netD_spec = ModelSelector.discriminator().to(device)
+        optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
+    else:
+        netD = ModelSelector.discriminator().to(device)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))

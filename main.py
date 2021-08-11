@@ -291,7 +291,7 @@ def main():
             
             wt = 4.0 / (config.n_layers_D_spec + 1)
             loss_feat_spec = 0
-            for k in range(len(D_fake)-1):
+            for k in range(len(D_fake_spec)-1):
                 loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec.detach())
 
             netG.zero_grad()

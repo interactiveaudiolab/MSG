@@ -15,7 +15,7 @@ import soundfile as sf
 import matplotlib.pyplot as plt
 import imageio
 
-
+import torch.nn as nn
 
 from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
 from models.Demucs import *
@@ -24,7 +24,15 @@ from datasets.Wrapper import DatasetWrapper
 
 
 pattern = re.compile('[\W_]+')
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = ""
+
+def create_saves_directory(directory_path, development_flag=False):
+    if development_flag:
+        return
+    if os.path.exists(directory_path):
+        raise Exception(f"The saves directory for {directory_path} already exists")
+    os.mkdir(directory_path)
+
 
 def parse_args(args_list):
     arg_names = [pattern.sub('', s) for s in args_list[::2]]
@@ -172,7 +180,11 @@ def main():
 
     wandb.init(config=params)
     config = wandb.config
-
+   
+    create_saves_directory(config.model_save_dir)
+    
+    global device
+    device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
 
@@ -184,6 +196,8 @@ def main():
         optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
+    netG = nn.DataParallel(netG, device_ids=config.gpus)
+    netD = nn.DataParallel(netD, device_ids=config.gpus)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))

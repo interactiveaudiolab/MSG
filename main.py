@@ -145,7 +145,7 @@ def run_validate(valid_loader, netG, netD, config):
             feature_losses.append(loss_feat.item())
             reconstruction_losses.append(s_error.item())
             sdrs.append(sdr_loss.cpu())
-        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), np.mean(sdrs), output_aud
+        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), -1*np.mean(sdrs), output_aud
 
 
 def main():
@@ -248,19 +248,35 @@ def main():
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
 
+            D_fake_det_spec = netD_spec(x_pred_t.to(device).detach())
+            D_real_spec = netD_spec(x_t_1.to(device))
+
             loss_D = 0
+            loss_D_spec = 0
+
             for scale in D_fake_det:
                 loss_D += F.relu(1 + scale[-1]).mean()
             for scale in D_real:
                 loss_D += F.relu(1 - scale[-1]).mean()
+            for scale in D_fake_det_spec:
+                loss_D_spec += F.relu(1 + scale[-1]).mean()
+            for scale in D_real_spec:
+                loss_D_spec += F.relu(1 - scale[-1]).mean()
+
             if epoch >= config.pretrain_epoch:
                 netD.zero_grad()
                 loss_D.backward()
                 optD.step()
+                netD_spec.zero_grad()
+                loss_D_spec.backward()
+                optD_spec.step()
+
             ###################
             # Train Generator #
             ###################
             D_fake = netD(x_pred_t.to(device))
+            D_fake_spec = netD_spec(x_pred_t.to(device))
+
             loss_G = 0
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
@@ -271,17 +287,34 @@ def main():
             for i in range(config.num_D):
                 for j in range(len(D_fake[i]) - 1):
                     loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
+            
+            wt = 4.0 / (config.n_layers_D_spec + 1)
+            loss_feat_spec = 0
+            for k in range(len(D_fake)-1):
+                loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec.detach())
+
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                (loss_G + config.lambda_feat * loss_feat).backward()
+                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat* loss_feat_spec).backward()
                 optG.step()
             else:
-                F.l1_loss(x_t_0,x_pred_t).backward()
+                wav_loss = F.l1_loss(x_t_0,x_pred_t)
+
+                true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)
+                real_part, imag_part = true_spec.unbind(-1)
+                true_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
+                fake_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
+                real_part, imag_part = fake_spec.unbind(-1)
+                fake_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
+
+                spec_loss = F.l1_loss(true_mag_spec,fake_mag_spec)
+
+                (wav_loss + spec_loss).backward()
                 optG.step()
             ######################
             # Update tensorboard #
             ######################
-            costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss]]
+            costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss,loss_D_spec.item(),loss_feat_spec.item()]]
             writer.add_scalar("loss/discriminator", costs[-1][0], steps)
             writer.add_scalar("loss/generator", costs[-1][1], steps)
             writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
@@ -296,12 +329,13 @@ def main():
                                 [SDR: {costs[-1][4]:.4f}]')
             wandb.log({
                 'Generator Loss':costs[-1][1],
-                'Discriminator Loss': costs[-1][0],
-                'Feature Loss': costs[-1][2],
+                'Wav Discriminator Loss': costs[-1][0],
+                'Spec Discriminator Loss': costs[-1][5],
+                'Wav Feature Loss': costs[-1][2],
+                'Spec Feature Loss': costs[-1][6],
                 'Reconstruction Loss': costs[-1][3],
                 'SDR': costs[-1][4],
                 'epoch' : epoch
-            
             })
 
             if steps % config.validation_steps==0: 

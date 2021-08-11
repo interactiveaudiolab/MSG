@@ -49,6 +49,7 @@ parameters:
   ndf: 16
   n_layers_D: 4
   downsamp_factor: 4
+  n_layers_D_spec: 6
 
 
 

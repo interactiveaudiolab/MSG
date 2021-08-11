@@ -258,6 +258,7 @@ def main():
                 loss_D += F.relu(1 + scale[-1]).mean()
             for scale in D_real:
                 loss_D += F.relu(1 - scale[-1]).mean()
+            
             for scale in D_fake_det_spec:
                 loss_D_spec += F.relu(1 + scale[-1]).mean()
             for scale in D_real_spec:

@@ -281,6 +281,9 @@ def main():
             loss_G = 0
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
+            for scale in D_fake_spec:
+                loss_G += -scale[-1].mean()
+            
             loss_feat = 0
             feat_weights = 4.0 / (config.n_layers_D + 1)
             D_weights = 1.0 / config.num_D

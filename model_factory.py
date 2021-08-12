@@ -1,22 +1,21 @@
-import torch
-from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from models.MelGAN import GeneratorMel, GeneratorMelMix, DiscriminatorMel, SpecDiscriminator
+from models.Demucs import Demucs
 
 class ModelFactory():
-    def __init__(self, model, netG_params, netD_params ,optimizer, optG_params, optD_params):
-        self.model = model
-        self.netG_params = netG_params
-        self.netD_params = netD_params
-        self.optimizer = optimizer
-        self.optG_params = optG_params
-        self.optD_params = optD_params
-    def getModel(self):
-        if self.model == 'MelGAN':
-            netG = GeneratorMel(self.netG_params)
-            netD = DiscriminatorMel(self.netD_params)
-        if self.optimizer == 'Adam':
-            optG = torch.optim.Adam(netG.parameters(), lr=self.optG_params.lr, betas=(self.optG_params.b1,self.optG_params.b2))
-            optD = torch.optim.Adam(netD.parameters(), lr=self.optD_params.lr, betas=(self.optD_params.b1,self.optD_params.b2))
-        if self.optimizer == 'SGD':
-            optG = torch.optim.SGD(netG.parameters(), lr=self.optG_params.lr)
-            optD = torch.optim.SGD(netD.parameters(), lr=self.optD_params.lr)
-        return netG, netD, optG, optD
+    def __init__(self, config):
+        self.config = config
+    def generator(self):
+        if self.config.model == "melgan":
+            if self.config.use_mix:
+                return GeneratorMelMix(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
+            else:
+                return GeneratorMel(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
+        if self.model == "demucs":
+            return Demucs([self.config.source],audio_channels=self.config.audio_channels,  segment_length=int(self.config.segment_duration * self.config.sample_rate), skip_cxn = self.config.skip_cxn)
+        else:
+            raise ValueError('Invalid Model')
+    def discriminator(self):
+        if self.multi_disc:
+            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
+        else:
+            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)

@@ -23,6 +23,14 @@ def WNConvTranspose1d(*args, **kwargs):
     return weight_norm(nn.ConvTranspose1d(*args, **kwargs))
 
 
+def WNConv2d(*args, **kwargs):
+    return weight_norm(nn.Conv2d(*args, **kwargs))
+
+
+def WNConvTranspose2d(*args, **kwargs):
+    return weight_norm(nn.ConvTranspose2d(*args, **kwargs))
+
+
 class Audio2Mel(nn.Module):
     def __init__(
         self,
@@ -84,6 +92,21 @@ class ResnetBlock(nn.Module):
     def forward(self, x):
         return self.shortcut(x) + self.block(x)
 
+
+class ResnetBlock2(nn.Module):
+    def __init__(self, dim, dilation=1):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.LeakyReLU(0.2),
+            nn.ReflectionPad2d(dilation),
+            WNConv2d(dim, dim, kernel_size=3, dilation=dilation),
+            nn.LeakyReLU(0.2),
+            WNConv2d(dim, dim, kernel_size=1),
+        )
+        self.shortcut = WNConv2d(dim, dim, kernel_size=1)
+
+    def forward(self, x):
+        return self.shortcut(x) + self.block(x)
 
 class GeneratorMel(nn.Module):
     def __init__(self, input_size, ngf, n_residual_layers,skip_cxn=False):
@@ -281,3 +304,132 @@ class SISDRLoss(nn.Module):
         if self.return_scaling:
             return scale
         return sdr
+
+class GeneratorMelMix(nn.Module):
+    def __init__(self, input_size, ngf, n_residual_layers,skip_cxn=False):
+        super().__init__()
+        ratios = [8, 8, 2, 2]
+        self.skip_cxn = skip_cxn
+        self.hop_length = np.prod(ratios)
+        mult = int(2 ** len(ratios))
+        
+        self.combine_layer= nn.Conv2d(2,1,1)
+
+        model_mix = [
+            nn.ReflectionPad1d(3),
+            WNConv1d(input_size, mult * ngf, kernel_size=7, padding=0),
+        ]
+
+        # Upsample to raw audio scale
+        for _, r in enumerate(ratios):
+            model_mix += [
+                nn.LeakyReLU(0.2),
+                WNConvTranspose1d(
+                    mult * ngf,
+                    mult * ngf // 2,
+                    kernel_size=r * 2,
+                    stride=r,
+                    padding=r // 2 + r % 2,
+                    output_padding=r % 2,
+                ),
+            ]
+
+            for j in range(n_residual_layers):
+                model_mix += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
+
+            mult //= 2
+        
+        model_source = [
+            nn.ReflectionPad1d(3),
+            WNConv1d(input_size, mult * ngf, kernel_size=7, padding=0),
+        ]
+
+        # Upsample to raw audio scale
+        for _, r in enumerate(ratios):
+            model_source += [
+                nn.LeakyReLU(0.2),
+                WNConvTranspose1d(
+                    mult * ngf,
+                    mult * ngf // 2,
+                    kernel_size=r * 2,
+                    stride=r,
+                    padding=r // 2 + r % 2,
+                    output_padding=r % 2,
+                ),
+            ]
+
+            for j in range(n_residual_layers):
+                model_source += [ResnetBlock(mult * ngf // 2, dilation=3 ** j)]
+
+            mult //= 2
+
+        model_comb = [
+            nn.LeakyReLU(0.2),
+            nn.ReflectionPad1d(3),
+            WNConv1d(ngf, 1, kernel_size=7, padding=0),
+            nn.Tanh(),
+        ]
+
+        self.model_mix = nn.Sequential(*model_mix)
+        self.apply(weights_init)
+        self.model_source = nn.Sequential(*model_source)
+        self.apply(weights_init)
+        self.model_comb = nn.Sequential(*model_comb)
+        self.apply(weights_init)
+
+    def forward(self, source, mix, aud):
+        
+        mix_x = self.model_mix(mix)
+        source_x = self.model_source(source)
+        x = self.combine_layer(torch.cat((mix_x.unsqueeze(1),source_x.unsqueeze(1)), dim=1))
+        imputed = center_trim(self.model_comb(x.squeeze(1)), 44100)
+
+        if not self.skip_cxn:
+            return imputed
+        else:
+            return imputed + aud
+
+class SpecDiscriminator(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_conv = WNConv1d(in_channels, 80, 1)
+        self.in_channels = in_channels
+        self.layers = nn.ModuleList(
+            [
+                WNConv1d(80, 80, 5, 1, 2, padding_mode="reflect"),
+                WNConv1d(80, 160, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(160, 320, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(320, 640, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(640, 1280, 4, 1, 1, padding_mode="reflect"),
+                WNConv1d(1280, 1280, 5, 1, 2, padding_mode="reflect"),
+            ]
+        )
+        self.output = WNConv1d(1280, 1, 3, 1, 1)
+        
+    def spectrogram(self, x):
+        window_length = (self.in_channels - 1) * 2
+        hop_length = window_length // 4
+        spec = torch.stft(
+            x,
+            n_fft=window_length,
+            hop_length=hop_length,
+            win_length=window_length,
+            center=True,
+        )
+
+        real_part, imag_part = spec.unbind(-1)
+        magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
+        magnitude += 1e-5
+ 
+        return torch.log10(magnitude)
+    
+    def forward(self, x):
+        s = self.spectrogram(x)
+        fmaps = []
+        s = self.in_conv(s)
+        fmaps.append(s)
+        for i, layer in enumerate(self.layers):
+            s = F.leaky_relu(layer(s), 0.2)
+            fmaps.append(s)
+        fmaps.append(self.output(s))
+        return fmaps

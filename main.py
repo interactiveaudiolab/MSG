@@ -3,6 +3,7 @@ import sys
 import argparse
 import re
 import yaml
+from model_factory import ModelFactory
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
@@ -16,7 +17,8 @@ import imageio
 
 import torch.nn as nn
 
-from models.MelGAN import Audio2Mel, GeneratorMel, DiscriminatorMel, SISDRLoss
+from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
+from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
 
@@ -100,9 +102,13 @@ def run_validate(valid_loader, netG, netD, config):
         for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            x_pred_t = netG(s_t,x_t_0)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
+            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            # s_t = fft(x_t_0)
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
+            s_test = fft(x_t_1)
+            s_error = F.l1_loss(s_test, s_pred_t)
             if iterno == int(config.random_sample):
                 output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
                                 x_t_1.squeeze(0).squeeze(0).cpu().numpy(), 
@@ -147,7 +153,7 @@ def run_validate(valid_loader, netG, netD, config):
             feature_losses.append(loss_feat.item())
             reconstruction_losses.append(s_error.item())
             sdrs.append(sdr_loss.cpu())
-        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), np.mean(sdrs), output_aud
+        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), -1*np.mean(sdrs), output_aud
 
 
 def main():
@@ -181,14 +187,16 @@ def main():
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
+
+    ModelSelector = ModelFactory(config)
     
-    netG = GeneratorMel(
-        config.n_mel_channels, config.ngf, config.n_residual_layers,config.skip_cxn
-        ).to(device)
+    netG = ModelSelector.generator().to(device)
+    if config.multi_disc:
+        netD, netD_spec = ModelSelector.discriminator().to(device)
+        optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
+    else:
+        netD = ModelSelector.discriminator().to(device)
     netG = nn.DataParallel(netG, device_ids=config.gpus)
-    netD = DiscriminatorMel(
-            config.num_D, config.ndf, config.n_layers_D, config.downsamp_factor
-        ).to(device)
     netD = nn.DataParallel(netD, device_ids=config.gpus)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
@@ -236,8 +244,11 @@ def main():
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            x_pred_t = netG(s_t,x_t_0)
+            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
+            #s_t = fft(x_t_0)
+            #print(x_t_0.shape)
+            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)
             s_error = F.l1_loss(s_test, s_pred_t)
@@ -251,22 +262,42 @@ def main():
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
 
+            D_fake_det_spec = netD_spec(x_pred_t.to(device).detach())
+            D_real_spec = netD_spec(x_t_1.to(device))
+
             loss_D = 0
+            loss_D_spec = 0
+
             for scale in D_fake_det:
                 loss_D += F.relu(1 + scale[-1]).mean()
             for scale in D_real:
                 loss_D += F.relu(1 - scale[-1]).mean()
+            
+             
+            loss_D_spec += F.relu(1 + D_fake_det_spec[-1]).mean()
+             
+            loss_D_spec += F.relu(1 - D_real_spec[-1]).mean()
+
             if epoch >= config.pretrain_epoch:
                 netD.zero_grad()
                 loss_D.backward()
                 optD.step()
+                netD_spec.zero_grad()
+                loss_D_spec.backward()
+                optD_spec.step()
+
             ###################
             # Train Generator #
             ###################
             D_fake = netD(x_pred_t.to(device))
+            D_fake_spec = netD_spec(x_pred_t.to(device))
+
             loss_G = 0
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
+            
+            loss_G += -D_fake_spec[-1].mean()
+            
             loss_feat = 0
             feat_weights = 4.0 / (config.n_layers_D + 1)
             D_weights = 1.0 / config.num_D
@@ -274,19 +305,34 @@ def main():
             for i in range(config.num_D):
                 for j in range(len(D_fake[i]) - 1):
                     loss_feat += wt * F.l1_loss(D_fake[i][j], D_real[i][j].detach())
+            
+            wt = 4.0 / (config.n_layers_D_spec + 1)
+            loss_feat_spec = 0
+            for k in range(len(D_fake_spec)-1):
+                loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec[k].detach())
+
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                (loss_G + config.lambda_feat * loss_feat).backward()
+                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
                 optG.step()
             else:
+                wav_loss = F.l1_loss(x_t_0,x_pred_t)
+
                 true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)
-                est_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
-                F.l1_loss(true_spec,est_spec).backward()
+                real_part, imag_part = true_spec.unbind(-1)
+                true_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
+                fake_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
+                real_part, imag_part = fake_spec.unbind(-1)
+                fake_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
+
+                spec_loss = F.l1_loss(true_mag_spec,fake_mag_spec)
+
+                (wav_loss + spec_loss).backward()
                 optG.step()
             ######################
             # Update tensorboard #
             ######################
-            costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss]]
+            costs = [[loss_D.item(), loss_G.item(), loss_feat.item(), s_error.item(),-1 *sdr_loss,loss_D_spec.item(),loss_feat_spec.item()]]
             writer.add_scalar("loss/discriminator", costs[-1][0], steps)
             writer.add_scalar("loss/generator", costs[-1][1], steps)
             writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
@@ -301,12 +347,13 @@ def main():
                                 [SDR: {costs[-1][4]:.4f}]')
             wandb.log({
                 'Generator Loss':costs[-1][1],
-                'Discriminator Loss': costs[-1][0],
-                'Feature Loss': costs[-1][2],
+                'Wav Discriminator Loss': costs[-1][0],
+                'Spec Discriminator Loss': costs[-1][5],
+                'Wav Feature Loss': costs[-1][2],
+                'Spec Feature Loss': costs[-1][6],
                 'Reconstruction Loss': costs[-1][3],
                 'SDR': costs[-1][4],
                 'epoch' : epoch
-            
             })
 
             if steps % config.validation_steps==0: 

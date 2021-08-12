@@ -20,8 +20,9 @@ class DatasetWrapper(Dataset):
             audio_data.squeeze()
         dirty_sample = current_item['sources']['dirty_'+self.target].to_mono().\
             audio_data.squeeze()
-
-        return dirty_sample, clean_sample
+        mix = current_item['mix'].to_mono().audio_data.squeeze()
+        
+        return dirty_sample, clean_sample, mix
 
     def __len__(self):
         return len(self.ds)

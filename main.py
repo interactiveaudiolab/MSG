@@ -103,7 +103,10 @@ def run_validate(valid_loader, netG, netD, config):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            if config.use_mix:
+                inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            else:
+                inp = F.pad(x_t_0,(2900,2900), "constant", 0)
             # s_t = fft(x_t_0)
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
@@ -247,7 +250,10 @@ def main():
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             #s_t = fft(x_t_0)
             #print(x_t_0.shape)
-            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            if config.use_mix:
+                inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            else:
+                inp = F.pad(x_t_0,(2900,2900), "constant", 0)
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)

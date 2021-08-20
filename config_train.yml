@@ -52,6 +52,8 @@ parameters:
   n_layers_D: 4
   downsamp_factor: 4
   n_layers_D_spec: 6
+  splits: [1,2]
+  split_weights: [[1],[1,1]]
 
 
 

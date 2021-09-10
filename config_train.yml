@@ -28,10 +28,10 @@ parameters:
   validation_steps: 5000
   random_sample : 1200
   checkpoint_interval: 25
-  batch_size: 256
+  batch_size: 128
   n_cpu: 4
   source: 'bass'
-  gpus: [1, 2]
+  gpus: [1]
 
   # Optimizer Hyperparameters
   lr: 0.0001

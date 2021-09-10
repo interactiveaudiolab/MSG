@@ -102,10 +102,11 @@ def run_validate(valid_loader, netG, netD, config):
         for iterno, x_t in enumerate(valid_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
-            # s_t = fft(x_t_0)
-            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
+
+            #inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            s_t = fft(x_t_0)
+            x_pred_t = netG(s_t,x_t_0)
+            #x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             s_pred_t = fft(x_pred_t)
             s_test = fft(x_t_1)
             s_error = F.l1_loss(s_test, s_pred_t)
@@ -198,10 +199,10 @@ def main():
         optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
-    netG = nn.DataParallel(netG, device_ids=config.gpus)
-    netD = nn.DataParallel(netD, device_ids=config.gpus)
-    if config.multi_disc:
-        netD_spec = nn.DataParallel(netD_spec, device_ids=config.gpus)
+    #netG = nn.DataParallel(netG, device_ids=config.gpus)
+    #netD = nn.DataParallel(netD, device_ids=config.gpus)
+    #if config.multi_disc:
+    #   netD_spec = nn.DataParallel(netD_spec, device_ids=config.gpus)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))
@@ -248,7 +249,7 @@ def main():
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
+            #x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             s_t = fft(x_t_0)
             #print(x_t_0.shape)
             #inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)

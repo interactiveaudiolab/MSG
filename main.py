@@ -181,7 +181,7 @@ def main():
     wandb.init(config=params)
     config = wandb.config
    
-    create_saves_directory(config.model_save_dir)
+    create_saves_directory(config.model_save_dir,development_flag=True)
     
     global device
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
@@ -192,12 +192,16 @@ def main():
     
     netG = ModelSelector.generator().to(device)
     if config.multi_disc:
-        netD, netD_spec = ModelSelector.discriminator().to(device)
+        discs = ModelSelector.discriminator()
+        netD = discs[0].to(device)
+        netD_spec = discs[1].to(device)
         optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
     netG = nn.DataParallel(netG, device_ids=config.gpus)
     netD = nn.DataParallel(netD, device_ids=config.gpus)
+    if config.multi_disc:
+        netD_spec = nn.DataParallel(netD_spec, device_ids=config.gpus)
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
 
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))
@@ -245,7 +249,7 @@ def main():
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
             x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0).unsqueeze(1)
+            s_t = fft(x_t_0)
             #print(x_t_0.shape)
             #inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
             x_pred_t = netG(s_t,x_t_0)

@@ -10,8 +10,8 @@ parameters:
   audio_channels: 1
 
   # Directories
-  model_save_dir: '/media/CHONK/data/imputation/saves/saves_demucs_bass_full_cont/'
-  model_load_dir: '/media/CHONK/data/imputation/saves/saves_demucs_bass_full/'
+  model_save_dir: '/media/CHONK/data/imputation/saves/saves_demucs_multispec_discriminator/'
+  model_load_dir: '/media/CHONK/data/imputation/saves/saves_demucs_multispec_discriminator/'
   train_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceTrainDatasetFolder/'
   valid_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceValidationDatasetFolder/'
   # Dataloader parameters
@@ -22,16 +22,17 @@ parameters:
 
   # Training Hyperparameters
   random_seed: 0
-  start_epoch: 50
+  start_epoch: 0
   n_epochs: 500
   pretrain_epoch: 50
-  validation_steps: 20000
+  validation_steps: 20
   random_sample : 1200
   checkpoint_interval: 25
-  batch_size: 8
+  batch_size: 4
   n_cpu: 4
   source: 'bass'
-  gpus: [1, 2]
+  gpus: [0]
+  disable_save: False
 
   # Optimizer Hyperparameters
   lr: 0.0001

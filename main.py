@@ -79,18 +79,25 @@ def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cp
                                num_workers=n_cpu, shuffle=False)
     return train_loader, valid_loader
 
-def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_spec):
+def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_spec, config):
     '''
     Input: save_path (string), netG (state_dict), netD (state_dict), 
     optG (torch.optim), optD(torch.optim)
     '''
+    print("saving models")
     torch.save(netG, save_path +  str(epoch) + "netG.pt")
     torch.save(netD, save_path  +  str(epoch) + "netD.pt")
     torch.save(optG, save_path   +  str(epoch) + "optG.pt")
     torch.save(optD, save_path   +  str(epoch) + "optD.pt")
     if spec:
-        torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
-        torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
+        if config.multi_disc:
+            for key in optD_spec.keys():
+                for i in range(key):
+                    torch.save(optD_spec[key][i], save_path + str(epoch) + f"optD_spec_split{key}_level{i}.pt")
+                    torch.save(netD_spec[key][i], save_path + str(epoch) + f"netD_spec_split{key}_level{i}.pt")
+        else:
+            torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
+            torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
 
 
 def run_validate(valid_loader, netG, netD, config):
@@ -188,21 +195,21 @@ def main():
     wandb.init(config=params)
     config = wandb.config
    
-    create_saves_directory(config.model_save_dir)
+    create_saves_directory(config.model_save_dir, True)
     
     global device
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
 
-    ModelSelector = ModelFactory(config)
+    ModelSelector = ModelFactory(config, torch.optim.Adam)
     
     netG = ModelSelector.generator().to(device)
     if config.multi_disc:
         netD, netD_spec = ModelSelector.discriminator()
         netD.to(device)
         netD_spec.to(device)
-        optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
+        # optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
     #netG = nn.DataParallel(netG, device_ids=config.gpus)
@@ -243,15 +250,15 @@ def main():
     costs = []
     netG.train()
     netD.train()
-    if config.multi_spec:
+    if config.multi_disc:
         netD_spec.train()
     steps = 0
     sdr = SISDRLoss()
     best_SDR = 0
     best_reconstruct = 100
     for epoch in range(start_epoch, config.n_epochs):
-        if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch:
-            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=true, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec )
+        if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
+            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
@@ -289,11 +296,11 @@ def main():
             
             for i in range(len(D_fake_det_spec)):
                 for j in range(len(D_fake_det_spec[i])):
-                    loss_D_spec += config.weights[i][j]*F.relu(1 + D_fake_det_spec[i][j][-1]).mean()
+                    loss_D_spec += config.split_weights[i][j]*F.relu(1 + D_fake_det_spec[i][j][-1]).mean()
             
             for i in range(len(D_real_spec)):
                 for j in range(len(D_real_spec[i])):
-                    loss_D_spec += config.weights[i][j]*F.relu(1 - D_real_spec[i][j][-1]).mean()
+                    loss_D_spec += config.split_weights[i][j]*F.relu(1 - D_real_spec[i][j][-1]).mean()
 
             if epoch >= config.pretrain_epoch:
                 netD.zero_grad()
@@ -301,7 +308,11 @@ def main():
                 optD.step()
                 netD_spec.zero_grad()
                 loss_D_spec.backward()
-                optD_spec.step()
+                #optD_spec.step()
+                if config.multi_disc:
+                    netD_spec.optimizer_step()
+                else:
+                    optD_spec.step()
 
             ###################
             # Train Generator #
@@ -315,7 +326,7 @@ def main():
             
             for i in range(len(D_fake_spec)):
                 for j in range(len(D_fake_spec[i])):
-                    loss_G += config.weights[i][j]* -D_fake_spec[i][j][-1].mean()
+                    loss_G += config.split_weights[i][j]* -D_fake_spec[i][j][-1].mean()
             
             loss_feat = 0
             feat_weights = 4.0 / (config.n_layers_D + 1)
@@ -331,7 +342,7 @@ def main():
             for i in range(len(D_fake_spec)):
                 for j in range(len(D_fake_spec[i])):
                     for k in range(len(D_fake_spec[i][j])-1):
-                        loss_feat_spec += config.weights[i][j] * wt * F.l1_loss(D_fake_spec[i][j][k], D_real_spec[i][j][k].detach())
+                        loss_feat_spec += config.split_weights[i][j] * wt * F.l1_loss(D_fake_spec[i][j][k], D_real_spec[i][j][k].detach())
 
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
@@ -394,11 +405,11 @@ def main():
                             caption = "Demucs Sample",
                             sample_rate=config.sample_rate
                         )]})
-                if valid_sdr > best_SDR:
-                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=true, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec)
+                if valid_sdr > best_SDR and not config.disable_save:
+                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
                     best_SDR = valid_sdr
-                if valid_s < best_reconstruct:
-                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=true, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec)
+                if valid_s < best_reconstruct and not config.disable_save:
+                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
                     best_reconstruct = valid_s
                 wandb.log({
                     'Valid Generator Loss': valid_g,

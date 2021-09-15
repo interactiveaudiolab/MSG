@@ -439,15 +439,21 @@ class SpecDiscriminator(nn.Module):
         fmaps.append(self.output(s))
         return fmaps
 
-class MultiSpecDiscriminator(nn.module):
+class MultiSpecDiscriminator(nn.Module):
     def __init__(self, in_channels, splits):
         super().__init__()
         self.in_channels= in_channels
         self.splits = splits
         self.model_dict = {}
+        #self.all_models = []
+        self.create_splits()
+        #print(self.all_models)
+        #self.model_params = nn.ParameterList([elem.parameters() for elem in self.all_models])
+
     def create_splits(self):
         for i in self.splits:
-            curr_models = [SpecDiscriminator(np.ceil(self.in_channels/i)) for k in range(i)]
+            curr_models = [SpecDiscriminator(np.ceil(self.in_channels/i).astype(int)) for k in range(i)]
+            #self.all_models += curr_models
             self.model_dict[i] = curr_models
 
     def spectrogram(self, x):
@@ -472,7 +478,7 @@ class MultiSpecDiscriminator(nn.module):
         s = self.spectrogram(x)
         outputs = []
         for key, disc in self.model_dict.items():
-            chunk_size = np.ceil(s.shape[0]/key)
+            chunk_size = np.ceil(s.shape[0]/key).astype(int)
             disc_outputs = []
             for i in range(key):
                 curr_spec = s[i*chunk_size:(i+1)*chunk_size,:]

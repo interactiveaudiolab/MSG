@@ -258,7 +258,8 @@ def main():
     best_reconstruct = 100
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
-            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
+            netD_spec_dict, optD_spec_dict = netD_spec._get()
+            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
         for iterno, x_t in enumerate(train_loader):
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)

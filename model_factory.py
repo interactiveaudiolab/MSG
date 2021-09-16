@@ -99,3 +99,6 @@ class MultiSpecDiscriminator():
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
+    def _get(self):
+        return self.model_dict, self.optimizer_dict
+

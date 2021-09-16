@@ -4,16 +4,16 @@ id: msg_demucs_bass
 parameters:
 
   # Model Parameters
-  model: 'melgan'
+  model: 'demucs'
   use_mix: False
   multi_disc: True
-  audio_channels: 2
+  audio_channels: 1
 
   # Directories
-  model_save_dir: '/home/nas6354/saves/saves_bass_melgan/'
-  model_load_dir: '/home/nas6354/saves/saves_baseline_drums/'
-  train_sources_path: '/home/nas6354/datasets/SalientSourceTrainDatasetFolder/'
-  valid_sources_path: '/home/nas6354/datasets/SalientSourceValidationDatasetFolder/'
+  model_save_dir: '/media/CHONK/data/imputation/saves/saves_demucs_multispec_discriminator/'
+  model_load_dir: '/media/CHONK/data/imputation/saves/saves_demucs_multispec_discriminator/'
+  train_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceTrainDatasetFolder/'
+  valid_sources_path: '/media/CHONK/data/imputation/DemucsDataset/SalientSourceValidationDatasetFolder/'
   # Dataloader parameters
   sample_rate: 44100
   mix_folder: 'mixture'
@@ -25,13 +25,14 @@ parameters:
   start_epoch: 0
   n_epochs: 500
   pretrain_epoch: 50
-  validation_steps: 5000
+  validation_steps: 20
   random_sample : 1200
   checkpoint_interval: 25
-  batch_size: 128
+  batch_size: 4
   n_cpu: 4
   source: 'bass'
-  gpus: [1]
+  gpus: [0]
+  disable_save: False
 
   # Optimizer Hyperparameters
   lr: 0.0001
@@ -52,6 +53,8 @@ parameters:
   n_layers_D: 4
   downsamp_factor: 4
   n_layers_D_spec: 6
+  splits: [1,2]
+  split_weights: [[1],[1,1]]
 
 
 

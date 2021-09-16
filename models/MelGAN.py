@@ -6,6 +6,7 @@ from torch.nn.utils import weight_norm
 import numpy as np
 
 
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -390,10 +391,11 @@ class GeneratorMelMix(nn.Module):
             return imputed + aud
 
 class SpecDiscriminator(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, use_multi=True):
         super().__init__()
         self.in_conv = WNConv1d(in_channels, 80, 1)
         self.in_channels = in_channels
+        self.use_multi = use_multi
         self.layers = nn.ModuleList(
             [
                 WNConv1d(80, 80, 5, 1, 2, padding_mode="reflect"),
@@ -405,7 +407,7 @@ class SpecDiscriminator(nn.Module):
             ]
         )
         self.output = WNConv1d(1280, 1, 3, 1, 1)
-        
+    
     def spectrogram(self, x):
         window_length = (self.in_channels - 1) * 2
         hop_length = window_length // 4
@@ -422,9 +424,12 @@ class SpecDiscriminator(nn.Module):
         magnitude += 1e-5
  
         return torch.log10(magnitude)
-    
+        
     def forward(self, x):
-        s = self.spectrogram(x)
+        if not self.use_multi:
+            s = self.spectrogram(x)
+        else:
+            s = x
         fmaps = []
         s = self.in_conv(s)
         fmaps.append(s)
@@ -433,3 +438,55 @@ class SpecDiscriminator(nn.Module):
             fmaps.append(s)
         fmaps.append(self.output(s))
         return fmaps
+
+class MultiSpecDiscriminator(nn.Module):
+    def __init__(self, in_channels, splits):
+        super().__init__()
+        self.in_channels= in_channels
+        self.splits = splits
+        self.model_dict = {}
+        #self.all_models = []
+        self.create_splits()
+        #print(self.all_models)
+        #self.model_params = nn.ParameterList([elem.parameters() for elem in self.all_models])
+
+    def create_splits(self):
+        for i in self.splits:
+            curr_models = [SpecDiscriminator(np.ceil(self.in_channels/i).astype(int)) for k in range(i)]
+            #self.all_models += curr_models
+            self.model_dict[i] = curr_models
+
+    def spectrogram(self, x):
+        window_length = (self.in_channels - 1) * 2
+        hop_length = window_length // 4
+        spec = torch.stft(
+            x,
+            n_fft=window_length,
+            hop_length=hop_length,
+            win_length=window_length,
+            center=True,
+        )
+
+        real_part, imag_part = spec.unbind(-1)
+        magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
+        magnitude += 1e-5
+ 
+        return torch.log10(magnitude)
+
+    def forward(self,x):
+        # TODO make sure spectrogram is taken over right dimension
+        s = self.spectrogram(x)
+        outputs = []
+        for key, disc in self.model_dict.items():
+            chunk_size = np.ceil(s.shape[0]/key).astype(int)
+            disc_outputs = []
+            for i in range(key):
+                curr_spec = s[i*chunk_size:(i+1)*chunk_size,:]
+                if i == key-1 and s.shape[1]%key !=0:
+                    pad = nn.ZeroPad2D((0,s.shape[0]%key,0,0))
+                    curr_spec =  pad(curr_spec)
+                disc_outputs.append(disc(curr_spec))
+            outputs.append(disc_outputs)
+        return outputs
+                
+    

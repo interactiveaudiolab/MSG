@@ -407,9 +407,11 @@ def main():
                             sample_rate=config.sample_rate
                         )]})
                 if valid_sdr > best_SDR and not config.disable_save:
+                    netD_spec_dict, optD_spec_dict = netD_spec._get()
                     save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
                     best_SDR = valid_sdr
                 if valid_s < best_reconstruct and not config.disable_save:
+                    netD_spec_dict, optD_spec_dict = netD_spec._get()
                     save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
                     best_reconstruct = valid_s
                 wandb.log({

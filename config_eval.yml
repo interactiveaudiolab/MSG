@@ -4,22 +4,23 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_load_dir: '/drive/MelGan-Imputation/saves_baseline/'
-  original_sources_path: '/drive/MelGan-Imputation/datasets/original_test_sources/'
-  separated_sources_path: '/drive/MelGan-Imputation/datasets/demucs_test_flattened/'
+  model_load_path: '/home/nas6354/evaluation/checkpoints/demucs_baseline/99netG.pt'
+  dataset_path: '/home/nas6354/datasets/SalientSourceTestDatasetFolder/'
   log_dir: '/drive/MelGan-Imputation/eval_saves/'
-  run_id: 7_7_noah
+  run_id: demucs_baseline
 
-  load_epoch: 2999
-  source: 'drums'
+  source: 'bass'
+  model: 'demucs'
 
   #Generator Hyperparameters
-  n_mel_channels: 80
-  ngf: 32
-  n_residual_layers: 3
-  lambda_feat: 10
+  audio_channels: 1
+  segment_duration: 1
+  sample_rate: 44100
   skip_cxn: True
+  use_mix: False
+  gpus: [2]
 
+  hop_len: .1
 
 
 

@@ -5,13 +5,14 @@ import yaml
 import numpy as np
 import nussl
 import librosa
-from scipy.spatial.distance import cosine
+import wandb
 
 import torch
+import torch.nn.functional as F
 
 from models.MelGAN import Audio2Mel, GeneratorMel
-from datasets.WaveDataset import MusicDataset
-
+from datasets.EvaluationDataset import EvalSet
+from model_factory import ModelFactory
 
 pattern = re.compile('[\W_]+')
 
@@ -75,111 +76,126 @@ def main():
         exp_dict['parameters'] = new_dict
 
     params = exp_dict['parameters']
-
-    G1 = GeneratorMel(params['n_mel_channels'], params['ngf'], params['n_residual_layers'])
-    G1.load_state_dict(torch.load( params['model_load_dir']+ str(params['load_epoch']) + 'netG.pt'))
-
-
-  #change this
+    wandb.init(config=params)
+    config = wandb.config
 
 
-    test_dirty = []
-    test_clean = []
+    global device
+    device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
+    np.random.seed(config.random_seed)
+    torch.manual_seed(config.random_seed)
 
-    for s in os.listdir(params['original_sources_path']):
-        if params['source'] in s:
-            test_dirty.append(params['separated_sources_path']  + s)
-            test_clean.append(params['original_sources_path']  + s)
 
-    ds_test = MusicDataset(test_dirty,test_clean,44100,44100)
-    G1.to('cuda')
-    G1.eval()
-    fft = Audio2Mel(n_mel_channels=params['n_mel_channels']).cuda()
+    ds_test = EvalSet(config.dataset_path, 1,44100,sources=('dirty_bass', 'bass'),as_dict=False, hop_length= config.hop_len)
+    song_indices = ds_test.get_song_indices()
+    
+    ModelSelector = ModelFactory(config, torch.optim.Adam)
+    netG = ModelSelector.generator().to(device)
+    netG.load_state_dict(torch.load(config.model_load_path))
 
-    si_sdr_noisy = []
-    si_sdr_generated = []
 
-    sd_sdr_noisy = []
-    sd_sdr_generated = []
+    sdr_noisy = []
+    sdr_generated = []
 
-    si_sar_noisy = []
-    si_sar_generated = []
+    sir_noisy = []
+    sir_generated = []
 
-    si_sir_noisy = []
-    si_sir_generated = []
+    sar_noisy = []
+    sar_generated = []
 
-    snr_noisy = []
-    snr_generated = []
-
-    noisy_cosine = []
-    generated_cosine = []
+ 
 
 
     with torch.no_grad():
-        for start in range(50):
-            clean1 = np.array([])
-            noisy1 = np.array([])
-            aud1 = np.array([])
-            for i in range(7*start, 7*start+7):
-                n,c = ds_test[i]
-                clean1 = np.concatenate((clean1,c))
-                noisy1 = np.concatenate((noisy1,n))
+        for i in range(50):
 
-                s_t = fft(torch.from_numpy(n).float().unsqueeze(0).unsqueeze(0).cuda()).detach()
-                x_pred_t = G1(s_t.cuda(),torch.from_numpy(n).cuda())
+            shift = int(1/config.hop_len)
+            reduction_factor = int(44100 * config.hop_len)
+            song = i
+            song_length = (song_indices[song][1]) - song_indices[song][0]
 
+            aud1 = np.zeros((song_length+shift)*reduction_factor)
+            clean1 = np.zeros((song_length+shift)*reduction_factor)
+            noisy1 = np.zeros((song_length+shift)*reduction_factor)
+            mix1 = np.zeros((song_length+shift)*reduction_factor)
+
+            for i in range(song_indices[song][0],song_indices[song][1]+1):
+                x_t_0 = torch.from_numpy(ds_test[i][1]).unsqueeze(0).unsqueeze(0).cuda()
+                x_t_1 = ds_test[i][2]
+                x_t_mix = ds_test[i][3]
+
+
+                inp  = F.pad(x_t_0, (2900,2900), "constant", 0)
+                x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
                 a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
-                aud1 = np.concatenate((aud1,a))
+
+                offset = song_indices[song][0]
+                ind = i - offset
+
+                aud1[ind*reduction_factor: (ind+shift)*reduction_factor] += a
+
+                noisy1[ind*reduction_factor: (ind+shift)*reduction_factor] += x_t_0.cpu().squeeze(0).squeeze(0).numpy()
+                clean1[ind*reduction_factor: (ind+shift)*reduction_factor] += x_t_1
+                mix1[ind*reduction_factor: (ind+shift)*reduction_factor] += x_t_mix
+            for i in range(0,shift-1):
+                aud1[i*reduction_factor:(i+1)*reduction_factor] /= (i+1)
+                aud1[-(i+1)*reduction_factor:-i*reduction_factor] /= (i+1)
+
+                clean1[i*reduction_factor:(i+1)*reduction_factor] /= (i+1)
+                clean1[-(i+1)*reduction_factor:-i*reduction_factor] /= (i+1)
+
+                noisy1[i*reduction_factor:(i+1)*reduction_factor] /= (i+1)
+                noisy1[-(i+1)*reduction_factor:-i*reduction_factor] /= (i+1)
+
+                mix1[i*reduction_factor:(i+1)*reduction_factor] /= (i+1)
+                mix1[-(i+1)*reduction_factor:-i*reduction_factor] /= (i+1)
+
+            aud1[(i+1)*reduction_factor:-(i+1)*reduction_factor] /= (i+2)
+            noisy1[(i+1)*reduction_factor:-(i+1)*reduction_factor] /= (i+2)
+            clean1[(i+1)*reduction_factor:-(i+1)*reduction_factor] /= (i+2)
+            mix1[(i+1)*reduction_factor:-(i+1)*reduction_factor] /= (i+2)
+
+            noisy1 = noisy1[0:(-i+2)*reduction_factor]
+            aud1 = aud1[0:(-i+2)*reduction_factor]
+            clean1 = clean1[0:(-i+2)*reduction_factor]
+            mix1 = mix1[0:(-i+2)*reduction_factor]
 
             c = nussl.AudioSignal(audio_data_array=clean1)
             n = nussl.AudioSignal(audio_data_array=noisy1)
             g = nussl.AudioSignal(audio_data_array=aud1)
-            bss_eval = nussl.evaluation.BSSEvalScale(
-            true_sources_list=[c],
-            estimated_sources_list=[n]
+
+            c1 = nussl.AudioSignal(audio_data_array=mix1-clean1)
+            n1 = nussl.AudioSignal(audio_data_array=mix1-noisy1)
+            g1 = nussl.AudioSignal(audio_data_array=mix1-aud1)
+
+            bss_eval = nussl.evaluation.BSSEvalV4(
+            true_sources_list=[c,c1],
+            estimated_sources_list=[n,n1],
             )
-
-            noisy = librosa.feature.melspectrogram(y=noisy1, sr=44100, n_mels=128,
-                                            fmax=8000)
-            clean = librosa.feature.melspectrogram(y=clean1, sr=44100, n_mels=128,
-                                            fmax=8000)
-            generated = librosa.feature.melspectrogram(y=aud1, sr=44100, n_mels=128,
-                                            fmax=8000)
-
-            noisy_cosine.append(cosine(clean.flatten(),noisy.flatten()))
-            generated_cosine.append(cosine(clean.flatten(),generated.flatten()))
-
             noisy_eval = bss_eval.evaluate()
 
-            bss_eval = nussl.evaluation.BSSEvalScale(
-                true_sources_list=[c],
-                estimated_sources_list=[g]
+            bss_eval = nussl.evaluation.BSSEvalV4(
+                true_sources_list=[c,c1],
+                estimated_sources_list=[g,g1]
             )
             gen_eval = bss_eval.evaluate()
 
-            si_sdr_noisy.append(noisy_eval['source_0']['SI-SDR'])
-            si_sdr_generated.append(gen_eval['source_0']['SI-SDR'])
-            sd_sdr_noisy.append(noisy_eval['source_0']['SD-SDR'])
-            sd_sdr_generated.append(gen_eval['source_0']['SD-SDR'])
-            si_sar_noisy.append(noisy_eval['source_0']['SI-SAR'])
-            si_sar_generated.append(gen_eval['source_0']['SI-SAR'])
-            si_sir_noisy.append(noisy_eval['source_0']['SI-SIR'])
-            si_sir_generated.append(gen_eval['source_0']['SI-SIR'])
-            snr_noisy.append(noisy_eval['source_0']['SNR'])
-            snr_generated.append(gen_eval['source_0']['SNR'])
+            sdr_noisy.append(np.mean(noisy_eval['source_0']['SDR']))
+            sdr_generated.append(np.mean(gen_eval['source_0']['SDR']))
+            sar_noisy.append(np.mean(noisy_eval['source_0']['SAR']))
+            sar_generated.append(np.mean(gen_eval['source_0']['SAR']))
+            sir_noisy.append(np.mean(noisy_eval['source_0']['SIR']))
+            sir_generated.append(np.mean(gen_eval['source_0']['SIR']))
+
+
     lines = []
-    lines.append('Original SI-SDR: '+ str(np.mean(si_sdr_noisy)))
-    lines.append('Our SI-SDR: ' + str(np.mean(si_sdr_generated)))
-    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sd_sdr_noisy)))
-    lines.append('Our SD-SDR: '+ str(np.mean(sd_sdr_generated)))
-    lines.append('\nOriginal SI-SAR: '+ str(np.mean(si_sar_noisy)))
-    lines.append('Our SI-SAR: '+ str(np.mean(si_sar_generated)))
-    lines.append('\nOriginal SI-SIR: ' + str(np.mean(si_sir_noisy)))
-    lines.append('Our SI-SIR: '+ str(np.mean(si_sir_generated)))
-    lines.append('\nOriginal SNR: '+ str(np.mean(snr_noisy)))
-    lines.append('Our SNR: '+ str(np.mean(snr_generated)))
-    lines.append('\nDemucs Mean Spectral Cosine Distance: '+ str(np.mean(noisy_cosine)))
-    lines.append('MSG Mean Spectral Cosine Distance: '+ str(np.mean(generated_cosine)))
+    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sdr_noisy)))
+    lines.append('Our SD-SDR: '+ str(np.mean(sdr_generated)))
+    lines.append('\nOriginal SAR: '+ str(np.mean(sar_noisy)))
+    lines.append('Our SAR: '+ str(np.mean(sar_generated)))
+    lines.append('\nOriginal SIR: ' + str(np.mean(sir_noisy)))
+    lines.append('Our SIR: '+ str(np.mean(sir_generated)))
+
 
     with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
       f.write('\n'.join(lines))

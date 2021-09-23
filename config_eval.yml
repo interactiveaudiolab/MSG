@@ -6,11 +6,12 @@ parameters:
   # Directories
   model_load_path: '/home/nas6354/evaluation/checkpoints/demucs_baseline/99netG.pt'
   dataset_path: '/home/nas6354/datasets/SalientSourceTestDatasetFolder/'
-  log_dir: '/drive/MelGan-Imputation/eval_saves/'
+  log_dir: '/home/nas6354/evaluation/logs/'
   run_id: demucs_baseline
 
   source: 'bass'
   model: 'demucs'
+  random_seed: 0
 
   #Generator Hyperparameters
   audio_channels: 1

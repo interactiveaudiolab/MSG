@@ -159,6 +159,10 @@ def main():
             aud1 = aud1[0:(-i+2)*reduction_factor]
             clean1 = clean1[0:(-i+2)*reduction_factor]
             mix1 = mix1[0:(-i+2)*reduction_factor]
+            
+            clean1[librosa.amplitude_to_db(clean1)<-60] = 0
+            aud1[librosa.amplitude_to_db(aud1)<-60] = 0
+            noisy1[librosa.amplitude_to_db(noisy1)<-60] = 0
 
             c = nussl.AudioSignal(audio_data_array=clean1)
             n = nussl.AudioSignal(audio_data_array=noisy1)
@@ -179,25 +183,25 @@ def main():
                 estimated_sources_list=[g,g1]
             )
             gen_eval = bss_eval.evaluate()
-
-            sdr_noisy.append(np.mean(noisy_eval['source_0']['SDR']))
-            sdr_generated.append(np.mean(gen_eval['source_0']['SDR']))
-            sar_noisy.append(np.mean(noisy_eval['source_0']['SAR']))
-            sar_generated.append(np.mean(gen_eval['source_0']['SAR']))
-            sir_noisy.append(np.mean(noisy_eval['source_0']['SIR']))
-            sir_generated.append(np.mean(gen_eval['source_0']['SIR']))
-
+            
+            sdr_noisy.append(np.nanmedian(noisy_eval['source_0']['SDR']))
+            sdr_generated.append(np.nanmedian(gen_eval['source_0']['SDR']))
+            sar_noisy.append(np.nanmedian(noisy_eval['source_0']['SAR']))
+            sar_generated.append(np.nanmedian(gen_eval['source_0']['SAR']))
+            sir_noisy.append(np.nanmedian(noisy_eval['source_0']['SIR']))
+            sir_generated.append(np.nanmedian(gen_eval['source_0']['SIR']))
+            
 
     lines = []
-    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sdr_noisy)))
-    lines.append('Our SD-SDR: '+ str(np.mean(sdr_generated)))
-    lines.append('\nOriginal SAR: '+ str(np.mean(sar_noisy)))
-    lines.append('Our SAR: '+ str(np.mean(sar_generated)))
-    lines.append('\nOriginal SIR: ' + str(np.mean(sir_noisy)))
-    lines.append('Our SIR: '+ str(np.mean(sir_generated)))
+    lines.append('\nOriginal SD-SDR: '+ str(np.nanmedian(sdr_noisy)))
+    lines.append('Our SD-SDR: '+ str(np.nanmedian(sdr_generated)))
+    lines.append('\nOriginal SAR: '+ str(np.nanmedian(sar_noisy)))
+    lines.append('Our SAR: '+ str(np.nanmedian(sar_generated)))
+    lines.append('\nOriginal SIR: ' + str(np.nanmedian(sir_noisy)))
+    lines.append('Our SIR: '+ str(np.nanmedian(sir_generated)))
 
 
-    with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
+    with open(params['log_dir'] + params['run_id'] + 'logs1.txt', 'w') as f:
       f.write('\n'.join(lines))
     
 

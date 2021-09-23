@@ -21,6 +21,7 @@ parameters:
   gpus: [2]
 
   hop_len: .1
+  random_seed: 0
 
 
 

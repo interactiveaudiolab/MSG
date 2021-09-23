@@ -107,11 +107,10 @@ def main():
 
 
     with torch.no_grad():
-        for i in range(50):
 
             shift = int(1/config.hop_len)
             reduction_factor = int(44100 * config.hop_len)
-            song = i
+            song = 1
             song_length = (song_indices[song][1]) - song_indices[song][0]
 
             aud1 = np.zeros((song_length+shift)*reduction_factor)
@@ -180,24 +179,44 @@ def main():
             )
             gen_eval = bss_eval.evaluate()
 
-            sdr_noisy.append(np.mean(noisy_eval['source_0']['SDR']))
-            sdr_generated.append(np.mean(gen_eval['source_0']['SDR']))
-            sar_noisy.append(np.mean(noisy_eval['source_0']['SAR']))
-            sar_generated.append(np.mean(gen_eval['source_0']['SAR']))
-            sir_noisy.append(np.mean(noisy_eval['source_0']['SIR']))
-            sir_generated.append(np.mean(gen_eval['source_0']['SIR']))
+            lines = []
+            lines.append( "Original Demucs SDR: " +str(np.nanmedian(noisy_eval['source_0']['SDR'])))
+            lines.append("Original MSG SDR: " + str(np.nanmedian(gen_eval['source_0']['SDR'])))
+
+            clean1[librosa.amplitude_to_db(clean1)<-60] = 0
+            aud1[librosa.amplitude_to_db(aud1)<-60] = 0
+            noisy1[librosa.amplitude_to_db(noisy1)<-60] = 0    
 
 
-    lines = []
-    lines.append('\nOriginal SD-SDR: '+ str(np.mean(sdr_noisy)))
-    lines.append('Our SD-SDR: '+ str(np.mean(sdr_generated)))
-    lines.append('\nOriginal SAR: '+ str(np.mean(sar_noisy)))
-    lines.append('Our SAR: '+ str(np.mean(sar_generated)))
-    lines.append('\nOriginal SIR: ' + str(np.mean(sir_noisy)))
-    lines.append('Our SIR: '+ str(np.mean(sir_generated)))
+            c = nussl.AudioSignal(audio_data_array=clean1)
+            n = nussl.AudioSignal(audio_data_array=noisy1)
+            g = nussl.AudioSignal(audio_data_array=aud1)
+
+            c1 = nussl.AudioSignal(audio_data_array=mix1-clean1)
+            n1 = nussl.AudioSignal(audio_data_array=mix1-noisy1)
+            g1 = nussl.AudioSignal(audio_data_array=mix1-aud1)
+
+            bss_eval = nussl.evaluation.BSSEvalV4(
+            true_sources_list=[c,c1],
+            estimated_sources_list=[n,n1],
+            )
+            noisy_eval = bss_eval.evaluate()
+
+            bss_eval = nussl.evaluation.BSSEvalV4(
+                true_sources_list=[c,c1],
+                estimated_sources_list=[g,g1]
+            )
+            gen_eval = bss_eval.evaluate()    
+
+            lines.append( "Noise Gate Demucs SDR: " +str(np.nanmedian(noisy_eval['source_0']['SDR'])))
+            lines.append("Noise Gate MSG SDR: " + str(np.nanmedian(gen_eval['source_0']['SDR'])))         
 
 
-    with open(params['log_dir'] + params['run_id'] + 'logs.txt', 'w') as f:
+
+    
+
+
+    with open(params['log_dir'] + params['run_id'] + 'test_sdr.txt', 'w') as f:
       f.write('\n'.join(lines))
     
 

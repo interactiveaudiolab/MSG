@@ -104,7 +104,6 @@ class EvalSet(Dataset):
         :return: list or dict of desired data
         """
         current_item: dict = self.metadata[item]
-        print(current_item)
         return_value = {} if self.as_dict else []
         for source in self.sources:
             if current_item["pad"]:

@@ -111,31 +111,37 @@ def run_validate(valid_loader, netG, netD, config):
     fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
     with torch.no_grad():
         for iterno, x_t in enumerate(valid_loader):
-            x_t_0 = x_t[0].unsqueeze(1).float().to(device)
-            x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            if config.use_mix:
-                inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            if config.mono:
+                x_t_0 = x_t[0].unsqueeze(1).float().to(device)
+                x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+                x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             else:
-                inp = F.pad(x_t_0,(2900,2900), "constant", 0)
-            # s_t = fft(x_t_0)
+                x_t_0 = x_t[0].float().to(device)
+                x_t_1 = x_t[1].float().to(device)
+                x_t_2 = x_t[2].float().to(device)
+                x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])
+                x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
+            
+            inp = F.pad(x_t_0,(3500,3500), "constant", 0)
+            
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
-            s_pred_t = fft(x_pred_t)
-            s_test = fft(x_t_1)
+            
+            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
+            x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
+           
+            s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
+            s_test = fft(x_t_1_mono.unsqueeze(1))
             s_error = F.l1_loss(s_test, s_pred_t)
+
             if iterno == int(config.random_sample):
-                output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(), 
-                                x_t_1.squeeze(0).squeeze(0).cpu().numpy(), 
-                                x_pred_t.squeeze(0).squeeze(0).cpu().numpy())
+                output_aud = (x_t_0.squeeze(0).cpu().numpy(), 
+                                x_t_1.squeeze(0).cpu().numpy(), 
+                                x_pred_t.squeeze(0).cpu().numpy())
 
             # Calculate valid reconstruction loss
-
-            s_test = fft(x_t_1)
-            s_error = F.l1_loss(s_test, s_pred_t)
-
             # Calculate valid reconstruction loss
             sdr = SISDRLoss()
-            sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
+            sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
@@ -195,7 +201,7 @@ def main():
     wandb.init(config=params)
     config = wandb.config
    
-    create_saves_directory(config.model_save_dir, True)
+    create_saves_directory(config.model_save_dir,config.debug)
     
     global device
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
@@ -209,7 +215,7 @@ def main():
         netD, netD_spec = ModelSelector.discriminator()
         netD.to(device)
         netD_spec.to(device)
-        # optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
+        optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
     #netG = nn.DataParallel(netG, device_ids=config.gpus)
@@ -228,7 +234,8 @@ def main():
                                     mix_folder = config.mix_folder,
                                     sample_rate = config.sample_rate,
                                     segment_dur = config.segment_duration,
-                                    verbose = config.verbose
+                                    verbose = config.verbose,
+                                    mono = config.mono
                                     )
 
 
@@ -261,31 +268,45 @@ def main():
             netD_spec_dict, optD_spec_dict = netD_spec._get()
             save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
         for iterno, x_t in enumerate(train_loader):
-            x_t_0 = x_t[0].unsqueeze(1).float().to(device)
-            x_t_1 = x_t[1].unsqueeze(1).float().to(device)
-            #x_t_2 = x_t[2].unsqueeze(1).float().to(device)
-            s_t = fft(x_t_0)
-            #print(x_t_0.shape)
-            if config.use_mix:
-                inp  = torch.cat( (F.pad(x_t_0,(2900,2900), "constant", 0),F.pad(x_t_2, (2900,2900), "constant", 0)), dim=1)
+            
+            if config.mono:
+                x_t_0 = x_t[0].unsqueeze(1).float().to(device)
+                x_t_1 = x_t[1].unsqueeze(1).float().to(device)
+                x_t_2 = x_t[2].unsqueeze(1).float().to(device)
             else:
-                inp = F.pad(x_t_0,(2900,2900), "constant", 0)
+                x_t_0 = x_t[0].float().to(device)
+                x_t_1 = x_t[1].float().to(device)
+                x_t_2 = x_t[2].float().to(device)
+                
+
+                x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])
+                x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
+                
+
+            #s_t = fft(x_t_0)
+            #print(x_t_0.shape)
+            inp = F.pad(x_t_0,(3500,3500), "constant", 0)
+            
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
-            s_pred_t = fft(x_pred_t)
-            s_test = fft(x_t_1)
+            
+            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
+            x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
+           
+            s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
+            s_test = fft(x_t_1_mono.unsqueeze(1))
             s_error = F.l1_loss(s_test, s_pred_t)
 
             #######################
             # Train Discriminator #
             #######################
             sdr = SISDRLoss()
-            sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
+            sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
 
-            D_fake_det_spec = netD_spec(x_pred_t.squeeze(1).to(device).detach())
-            D_real_spec = netD_spec(x_t_1.squeeze(1).to(device))
+            D_fake_det_spec = netD_spec(x_pred_t_mono.to(device).detach())
+            D_real_spec = netD_spec(x_t_1_mono.to(device))
 
             loss_D = 0
             loss_D_spec = 0
@@ -319,7 +340,7 @@ def main():
             # Train Generator #
             ###################
             D_fake = netD(x_pred_t.to(device))
-            D_fake_spec = netD_spec(x_pred_t.squeeze(1).to(device))
+            D_fake_spec = netD_spec(x_pred_t_mono.to(device))
 
             loss_G = 0
             for scale in D_fake:
@@ -351,15 +372,6 @@ def main():
                 optG.step()
             else:
                 wav_loss = F.l1_loss(x_t_0,x_pred_t)
-
-               # true_spec = torch.stft(input=x_t_0.squeeze(0).squeeze(1),n_fft=1024)
-               # real_part, imag_part = true_spec.unbind(-1)
-               # true_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
-               # fake_spec = torch.stft(input=x_pred_t.squeeze(0).squeeze(1),n_fft=1024)
-               # real_part, imag_part = fake_spec.unbind(-1)
-               # fake_mag_spec = torch.log10(torch.sqrt(real_part ** 2 + imag_part ** 2) + 1e-5)
-
-                #spec_loss = F.l1_loss(true_mag_spec,fake_mag_spec)
 
                 (wav_loss).backward()
                 optG.step()

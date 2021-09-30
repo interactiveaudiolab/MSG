@@ -152,7 +152,7 @@ class GeneratorMel(nn.Module):
         self.apply(weights_init)
 
     def forward(self, x,aud):
-        imputed = center_trim(self.model(x),44100)
+        imputed = center_trim(self.model(x),441000)
         if not self.skip_cxn:
             return imputed
         else:
@@ -180,7 +180,7 @@ class NLayerDiscriminator(nn.Module):
 
         model["layer_0"] = nn.Sequential(
             nn.ReflectionPad1d(7),
-            WNConv1d(1, ndf, kernel_size=15),
+            WNConv1d(2, ndf, kernel_size=15),
             nn.LeakyReLU(0.2, True),
         )
 
@@ -383,7 +383,7 @@ class GeneratorMelMix(nn.Module):
         mix_x = self.model_mix(mix)
         source_x = self.model_source(source)
         x = self.combine_layer(torch.cat((mix_x.unsqueeze(1),source_x.unsqueeze(1)), dim=1))
-        imputed = center_trim(self.model_comb(x.squeeze(1)), 44100)
+        imputed = center_trim(self.model_comb(x.squeeze(1)), 441000)
 
         if not self.skip_cxn:
             return imputed
@@ -418,10 +418,9 @@ class SpecDiscriminator(nn.Module):
             win_length=window_length,
             center=True,
         )
-
+        spec += 1e-5
         real_part, imag_part = spec.unbind(-1)
         magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
-        magnitude += 1e-5
  
         return torch.log10(magnitude)
         

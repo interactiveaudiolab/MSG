@@ -287,7 +287,7 @@ def main():
             #print(x_t_0.shape)
             inp = F.pad(x_t_0,(3500,3500), "constant", 0)
             
-            x_pred_t = netG(inp,x_t_0.unsqueeze(1))
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
             x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
             x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))

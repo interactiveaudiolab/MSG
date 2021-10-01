@@ -5,7 +5,7 @@ parameters:
 
   # Model Parameters
   model: 'demucs'
-  use_mix: false
+  use_mix: False
   multi_disc: True
   audio_channels: 2
   debug: True

@@ -302,8 +302,8 @@ def main():
             sdr = SISDRLoss()
             sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
-            D_fake_det = netD(x_pred_t.unsqueeze(1).to(device).detach())
-            D_real = netD(x_t_1.unsqueeze(1).to(device))
+            D_fake_det = netD(x_pred_t.to(device).detach())
+            D_real = netD(x_t_1.to(device))
 
             D_fake_det_spec = netD_spec(x_pred_t_mono.to(device).detach())
             D_real_spec = netD_spec(x_t_1_mono.to(device))
@@ -316,13 +316,9 @@ def main():
             for scale in D_real:
                 loss_D += F.relu(1 - scale[-1]).mean()
             
-            for i in range(len(D_fake_det_spec)):
-                for j in range(len(D_fake_det_spec[i])):
-                    loss_D_spec += config.split_weights[i][j]*F.relu(1 + D_fake_det_spec[i][j][-1]).mean()
-            
-            for i in range(len(D_real_spec)):
-                for j in range(len(D_real_spec[i])):
-                    loss_D_spec += config.split_weights[i][j]*F.relu(1 - D_real_spec[i][j][-1]).mean()
+            loss_D_spec += F.relu(1 + D_fake_det_spec[-1]).mean()
+             
+            loss_D_spec += F.relu(1 - D_real_spec[-1]).mean()
 
             if epoch >= config.pretrain_epoch:
                 netD.zero_grad()
@@ -346,9 +342,8 @@ def main():
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
             
-            for i in range(len(D_fake_spec)):
-                for j in range(len(D_fake_spec[i])):
-                    loss_G += config.split_weights[i][j]* -D_fake_spec[i][j][-1].mean()
+            loss_G += -D_fake_spec[-1].mean()
+
             
             loss_feat = 0
             feat_weights = 4.0 / (config.n_layers_D + 1)
@@ -360,11 +355,8 @@ def main():
             
             wt = 4.0 / (config.n_layers_D_spec + 1)
             loss_feat_spec = 0
-            
-            for i in range(len(D_fake_spec)):
-                for j in range(len(D_fake_spec[i])):
-                    for k in range(len(D_fake_spec[i][j])-1):
-                        loss_feat_spec += config.split_weights[i][j] * wt * F.l1_loss(D_fake_spec[i][j][k], D_real_spec[i][j][k].detach())
+            for k in range(len(D_fake_spec)-1):
+                loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec[k].detach())
 
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:

@@ -287,7 +287,7 @@ def main():
             #print(x_t_0.shape)
             inp = F.pad(x_t_0,(3500,3500), "constant", 0)
             
-            x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
+            x_pred_t = netG(inp,x_t_0.unsqueeze(1))
             
             x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
             x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
@@ -302,8 +302,8 @@ def main():
             sdr = SISDRLoss()
             sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
-            D_fake_det = netD(x_pred_t.to(device).detach())
-            D_real = netD(x_t_1.to(device))
+            D_fake_det = netD(x_pred_t.unsqueeze(1).to(device).detach())
+            D_real = netD(x_t_1.unsqueeze(1).to(device))
 
             D_fake_det_spec = netD_spec(x_pred_t_mono.to(device).detach())
             D_real_spec = netD_spec(x_t_1_mono.to(device))

@@ -466,9 +466,11 @@ class MultiSpecDiscriminator(nn.Module):
             center=True,
         )
 
+
+        spec+=1e-5
         real_part, imag_part = spec.unbind(-1)
         magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
-        magnitude += 1e-5
+        
  
         return torch.log10(magnitude)
 

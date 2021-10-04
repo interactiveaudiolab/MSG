@@ -90,14 +90,8 @@ def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_s
     torch.save(optG, save_path   +  str(epoch) + "optG.pt")
     torch.save(optD, save_path   +  str(epoch) + "optD.pt")
     if spec:
-        if config.multi_disc:
-            for key in optD_spec.keys():
-                for i in range(key):
-                    torch.save(optD_spec[key][i], save_path + str(epoch) + f"optD_spec_split{key}_level{i}.pt")
-                    torch.save(netD_spec[key][i], save_path + str(epoch) + f"netD_spec_split{key}_level{i}.pt")
-        else:
-            torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
-            torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
+        torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
+        torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
 
 
 def run_validate(valid_loader, netG, netD, config):
@@ -173,7 +167,7 @@ def run_validate(valid_loader, netG, netD, config):
             feature_losses.append(loss_feat.item())
             reconstruction_losses.append(s_error.item())
             sdrs.append(sdr_loss.cpu())
-        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.mean(reconstruction_losses), -1*np.mean(sdrs), output_aud
+        return np.mean(disc_losses), np.mean(gen_losses), np.mean(feature_losses), np.nanmean(reconstruction_losses), -1*np.nanmean(sdrs), output_aud
 
 
 def main():
@@ -200,8 +194,8 @@ def main():
 
     wandb.init(config=params)
     config = wandb.config
-   
-    create_saves_directory(config.model_save_dir,config.debug)
+    if config.start_epoch ==0: 
+        create_saves_directory(config.model_save_dir,config.debug)
     
     global device
     device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
@@ -243,12 +237,14 @@ def main():
 
     if start_epoch > 0:
         netG.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netG.pt"))
-        #netD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD.pt"))
+        netD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD.pt"))
         optG.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
                                                                     "optG.pt").state_dict())
         optD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
                                                                     "optD.pt").state_dict())
-
+        optD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
+                                                                                "optD_spec.pt").state_dict())
+        netD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD_spec.pt"))
     ###################
     ##### TRAINING ####
     ###### LOOP #######
@@ -265,8 +261,7 @@ def main():
     best_reconstruct = 100
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
-            netD_spec_dict, optD_spec_dict = netD_spec._get()
-            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
+            save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
         for iterno, x_t in enumerate(train_loader):
             
             if config.mono:
@@ -279,8 +274,7 @@ def main():
                 x_t_2 = x_t[2].float().to(device)
                 
 
-                x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])
-                x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
+                x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])/torch.max(torch.abs(x_t_1[:,0,:] + x_t_1[:,1,:]))
                 
 
             #s_t = fft(x_t_0)
@@ -289,8 +283,7 @@ def main():
             
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
-            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
-            x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
+            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])/ torch.max(torch.abs(x_pred_t[:,0,:] + x_pred_t[:,1,:]))
            
             s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
             s_test = fft(x_t_1_mono.unsqueeze(1))
@@ -326,10 +319,7 @@ def main():
                 optD.step()
                 netD_spec.zero_grad()
                 loss_D_spec.backward()
-                #optD_spec.step()
                 if config.multi_disc:
-                    netD_spec.optimizer_step()
-                else:
                     optD_spec.step()
 
             ###################
@@ -360,7 +350,8 @@ def main():
 
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
+                torch.autograd.set_detect_anomaly(True)
+                (loss_G + loss_feat + loss_feat_spec).backward()
                 optG.step()
             else:
                 wav_loss = F.l1_loss(x_t_0,x_pred_t)
@@ -397,8 +388,8 @@ def main():
             if steps % config.validation_steps==0: 
                 valid_d, valid_g, valid_feat, valid_s, valid_sdr, aud = run_validate(valid_loader, netG, netD, config)
                 if steps==0:
-                    sf.write('validation_original.wav', aud[1] ,config.sample_rate)
-                    sf.write('validation_demucs.wav', aud[0] ,config.sample_rate)
+                    sf.write('validation_original.wav', np.transpose(aud[1]) ,config.sample_rate)
+                    sf.write('validation_demucs.wav', np.transpose(aud[0]) ,config.sample_rate)
                     wandb.log({"Validation Audio": 
                         [wandb.Audio(
                             'validation_original.wav', 
@@ -411,12 +402,10 @@ def main():
                             sample_rate=config.sample_rate
                         )]})
                 if valid_sdr > best_SDR and not config.disable_save:
-                    netD_spec_dict, optD_spec_dict = netD_spec._get()
-                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
+                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
                     best_SDR = valid_sdr
                 if valid_s < best_reconstruct and not config.disable_save:
-                    netD_spec_dict, optD_spec_dict = netD_spec._get()
-                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec_dict, optD_spec = optD_spec_dict, config=config)
+                    save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
                     best_reconstruct = valid_s
                 wandb.log({
                     'Valid Generator Loss': valid_g,
@@ -425,7 +414,7 @@ def main():
                     'Valid Reconstruction Loss': valid_s,
                     'Valid SDR': valid_sdr
                 })
-                sf.write(f'generated_{steps}.wav', aud[2] ,config.sample_rate)
+                sf.write(f'generated_{steps}.wav', np.transpose(aud[2]) ,config.sample_rate)
                 wandb.log({f'{steps} Steps': 
                 [wandb.Audio(
                     f'generated_{steps}.wav', 
@@ -440,8 +429,9 @@ def main():
                 axes = [ax1,ax2,ax3]
 
                 for i in range(3):
-                
-                    spec_data = librosa.feature.melspectrogram(y=aud[i], sr=44100, n_mels=128,
+                    aud_mono =  (aud[i][0,:] + aud[i][1,:])
+                    aud_mono /= np.max(np.abs(aud_mono))
+                    spec_data = librosa.feature.melspectrogram(y=aud_mono, sr=44100, n_mels=128,
                                                         fmax=8000)
                     S_dB = librosa.power_to_db(spec_data, ref=np.max)
                     _fig_ax = librosa.display.specshow(S_dB, x_axis='time',

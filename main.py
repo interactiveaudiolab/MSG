@@ -351,7 +351,7 @@ def main():
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
                 torch.autograd.set_detect_anomaly(True)
-                (loss_G + loss_feat + loss_feat_spec).backward()
+                (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
                 optG.step()
             else:
                 wav_loss = F.l1_loss(x_t_0,x_pred_t)

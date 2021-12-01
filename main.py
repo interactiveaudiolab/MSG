@@ -116,7 +116,7 @@ def run_validate(valid_loader, netG, netD, config):
                 x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])
                 x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
             
-            inp = F.pad(x_t_0,(3500,3500), "constant", 0)
+            inp = F.pad(x_t_0,(3400,3400), "constant", 0)
             
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
@@ -279,7 +279,7 @@ def main():
 
             #s_t = fft(x_t_0)
             #print(x_t_0.shape)
-            inp = F.pad(x_t_0,(3500,3500), "constant", 0)
+            inp = F.pad(x_t_0,(3400,3400), "constant", 0)
             
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
@@ -332,7 +332,7 @@ def main():
             for scale in D_fake:
                 loss_G += -scale[-1].mean()
             
-            loss_G += -D_fake_spec[-1].mean()
+            loss_G += -D_fake_spec[-1].mean()*3
 
             
             loss_feat = 0

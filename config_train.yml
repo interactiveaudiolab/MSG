@@ -11,29 +11,29 @@ parameters:
   debug: False
   mono: False
   # Directories
-  model_save_dir: '/home/nas6354/saves/demucs_extended_baseline/'
-  model_load_dir: '/home/nas6354/saves/demucs_extended_baseline/'
-  train_sources_path: '/home/nas6354/datasets/SalientSourceTrainDatasetFolder/'
-  valid_sources_path: '/home/nas6354/datasets/SalientSourceValidationDatasetFolder/'
+  model_save_dir: '/home/nas6354/saves/demucs_publish_baseline_bass/'
+  model_load_dir: '/home/nas6354/saves/demucs_publish_baseline_bass/'
+  train_sources_path: '/home/nas6354/datasets/Dec1Demucs/train'
+  valid_sources_path: '/home/nas6354/datasets/Dec1Demucs/valid'
   # Dataloader parameters
   sample_rate: 44100
   mix_folder: 'mixture'
-  segment_duration: 10
+  segment_duration: 2
   verbose: True
   disable_save: False
 
   # Training Hyperparameters
   random_seed: 0
-  start_epoch: 50
-  n_epochs: 500
+  start_epoch: 0
+  n_epochs: 200
   pretrain_epoch: 50
   validation_steps: 5000
   random_sample : 10
   checkpoint_interval: 25
-  batch_size: 4
+  batch_size: 24
   n_cpu: 4
   source: 'bass'
-  gpus: [2]
+  gpus: [1]
 
   # Optimizer Hyperparameters
   lr: 0.0001

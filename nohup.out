@@ -1,0 +1,37 @@
+wandb: Currently logged in as: noahschaffer (use `wandb login --relogin` to force relogin)
+wandb: wandb version 0.12.7 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.12.1
+wandb: Syncing run hardy-totem-41
+wandb:  View project at https://wandb.ai/noahschaffer/demucs_model_training
+wandb:  View run at https://wandb.ai/noahschaffer/demucs_model_training/runs/1pz394ce
+wandb: Run data is saved locally in /home/nas6354/demucs_model_training/wandb/run-20211123_164401-1pz394ce
+wandb: Run `wandb offline` to turn off syncing.
+
+Traceback (most recent call last):
+  File "main.py", line 450, in <module>
+    main()
+  File "main.py", line 222, in main
+    train_loader, valid_loader = initialize_nussl_dataloader(
+  File "main.py", line 74, in initialize_nussl_dataloader
+    train_set = DatasetWrapper(train_path, source, **kwargs)
+  File "/home/nas6354/demucs_model_training/datasets/Wrapper.py", line 11, in __init__
+    self.ds = nussl.datasets.SalientExcerptMixSourceFolder(path_to_ds,
+  File "/home/nas6354/seethlord/nussl/nussl/datasets/hooks.py", line 498, in __init__
+    self.mix_src = MixSourceFolder(
+  File "/home/nas6354/seethlord/nussl/nussl/datasets/hooks.py", line 175, in __init__
+    super().__init__(folder, **kwargs)
+  File "/home/nas6354/seethlord/nussl/nussl/datasets/base_dataset.py", line 72, in __init__
+    self.items = self.get_items(self.folder)
+  File "/home/nas6354/seethlord/nussl/nussl/datasets/hooks.py", line 180, in get_items
+    f for f in os.listdir(folder)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/nas6354/datasets/SalientSourceTrainDatasetFolder/'
+wandb: Waiting for W&B process to finish, PID 3530038
+wandb: Program failed with code 1.  Press ctrl-c to abort syncing.
+wandb: - 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: \ 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: | 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: / 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: - 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: \ 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: | 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: / 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: - 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb:                                                                                
+wandb: Find user logs for this run at: /home/nas6354/demucs_model_training/wandb/run-20211123_164401-1pz394ce/logs/debug.log
+wandb: Find internal logs for this run at: /home/nas6354/demucs_model_training/wandb/run-20211123_164401-1pz394ce/logs/debug-internal.log
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: 
+wandb: Synced hardy-totem-41: https://wandb.ai/noahschaffer/demucs_model_training/runs/1pz394ce
+

@@ -11,7 +11,7 @@ parameters:
   debug: False
   mono: False
   # Directories
-  model_save_dir: '/home/nas6354/saves/demucs_publish_baseline_bass/'
+  model_save_dir: '/home/nas6354/saves/demucs_l1_bass/'
   model_load_dir: '/home/nas6354/saves/demucs_publish_baseline_bass/'
   train_sources_path: '/home/nas6354/datasets/Dec1Demucs/train'
   valid_sources_path: '/home/nas6354/datasets/Dec1Demucs/valid'
@@ -24,7 +24,7 @@ parameters:
 
   # Training Hyperparameters
   random_seed: 0
-  start_epoch: 0
+  start_epoch: 100
   n_epochs: 200
   pretrain_epoch: 50
   validation_steps: 5000
@@ -34,6 +34,7 @@ parameters:
   n_cpu: 4
   source: 'bass'
   gpus: [1]
+  l1interval: 10
 
   # Optimizer Hyperparameters
   lr: 0.0001

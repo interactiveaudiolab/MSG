@@ -24,7 +24,8 @@ from datasets.Wrapper import DatasetWrapper
 
 
 pattern = re.compile('[\W_]+')
-device = ""
+#default GPU is 1
+device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
 def create_saves_directory(directory_path, development_flag=False):
     if development_flag:
@@ -197,8 +198,8 @@ def main():
     if config.start_epoch ==0: 
         create_saves_directory(config.model_save_dir,config.debug)
     
-    global device
-    device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
+    #global device
+    #device = torch.device(f"cuda:{config.gpus[0]}" if torch.cuda.is_available() else "cpu")
     np.random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
 
@@ -313,7 +314,7 @@ def main():
              
             loss_D_spec += F.relu(1 - D_real_spec[-1]).mean()
 
-            if epoch >= config.pretrain_epoch:
+            if epoch >= config.pretrain_epoch and (epoch <= 100 or epoch%config.l1interval!=0):
                 netD.zero_grad()
                 loss_D.backward()
                 optD.step()
@@ -349,7 +350,7 @@ def main():
                 loss_feat_spec += wt * F.l1_loss(D_fake_spec[k], D_real_spec[k].detach())
 
             netG.zero_grad()
-            if epoch >= config.pretrain_epoch:
+            if epoch >= config.pretrain_epoch and (epoch <= 100 or epoch%config.l1interval!=0):
                 torch.autograd.set_detect_anomaly(True)
                 (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
                 optG.step()

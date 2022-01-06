@@ -117,15 +117,19 @@ def run_validate(valid_loader, netG, netD, config):
                 x_t_1_mono = (x_t_1[:,0,:] + x_t_1[:,1,:])
                 x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
             
-            inp = F.pad(x_t_0,(3400,3400), "constant", 0)
+            inp = F.pad(x_t_0,(2900,2900), "constant", 0)
             
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
-            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
-            x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
-           
-            s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
-            s_test = fft(x_t_1_mono.unsqueeze(1))
+            if not config.mono:
+                x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])
+                x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
+            if config.mono:
+                s_pred_t = fft(x_pred_t)
+                s_test = fft(x_t_1)
+            else:
+                s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
+                s_test = fft(x_t_1_mono.unsqueeze(1))
             s_error = F.l1_loss(s_test, s_pred_t)
 
             if iterno == int(config.random_sample):
@@ -136,7 +140,11 @@ def run_validate(valid_loader, netG, netD, config):
             # Calculate valid reconstruction loss
             # Calculate valid reconstruction loss
             sdr = SISDRLoss()
-            sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
+            
+            if config.mono:
+                sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
+            else:
+                sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
@@ -280,27 +288,39 @@ def main():
 
             #s_t = fft(x_t_0)
             #print(x_t_0.shape)
-            inp = F.pad(x_t_0,(3400,3400), "constant", 0)
+            inp = F.pad(x_t_0,(2900,2900), "constant", 0)
             
             x_pred_t = netG(inp,x_t_0.unsqueeze(1)).squeeze(1)
             
-            x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])/ torch.max(torch.abs(x_pred_t[:,0,:] + x_pred_t[:,1,:]))
+            if not config.mono:
+                x_pred_t_mono = (x_pred_t[:,0,:] + x_pred_t[:,1,:])/ torch.max(torch.abs(x_pred_t[:,0,:] + x_pred_t[:,1,:]))
            
-            s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
-            s_test = fft(x_t_1_mono.unsqueeze(1))
+            if config.mono:
+                s_pred_t = fft(x_pred_t)
+                s_test = fft(x_t_1)
+            else:
+                s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
+                s_test = fft(x_t_1_mono.unsqueeze(1))
             s_error = F.l1_loss(s_test, s_pred_t)
 
             #######################
             # Train Discriminator #
             #######################
             sdr = SISDRLoss()
-            sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
+            if config.mono:
+                sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
+            else
+                sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())
             D_real = netD(x_t_1.to(device))
-
-            D_fake_det_spec = netD_spec(x_pred_t_mono.to(device).detach())
-            D_real_spec = netD_spec(x_t_1_mono.to(device))
+            
+            if confg.mono:
+                D_fake_det_spec = netD_spec(x_pred_t.squeeze(1).to(device).detach())
+                D_real_spec = netD_spec(x_t_1.squeeze(1).to(device))
+            else:
+                D_fake_det_spec = netD_spec(x_pred_t_mono.to(device).detach())
+                D_real_spec = netD_spec(x_t_1_mono.to(device))
 
             loss_D = 0
             loss_D_spec = 0
@@ -327,7 +347,10 @@ def main():
             # Train Generator #
             ###################
             D_fake = netD(x_pred_t.to(device))
-            D_fake_spec = netD_spec(x_pred_t_mono.to(device))
+            if config.mono:
+                D_fake_spec = netD_spec(x_pred_t.squeeze(1).to(device))
+            else:
+                D_fake_spec = netD_spec(x_pred_t_mono.to(device))
 
             loss_G = 0
             for scale in D_fake:

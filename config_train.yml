@@ -7,25 +7,25 @@ parameters:
   model: 'demucs'
   use_mix: False
   multi_disc: True
-  audio_channels: 2
+  audio_channels: 1
   debug: False
-  mono: False
+  mono: True
   # Directories
-  model_save_dir: '/home/nas6354/saves/demucs_l1_bass/'
+  model_save_dir: '/home/nas6354/saves/demucs_l1_bass_mono/'
   model_load_dir: '/home/nas6354/saves/demucs_publish_baseline_bass/'
   train_sources_path: '/home/nas6354/datasets/Dec1Demucs/train'
   valid_sources_path: '/home/nas6354/datasets/Dec1Demucs/valid'
   # Dataloader parameters
   sample_rate: 44100
   mix_folder: 'mixture'
-  segment_duration: 2
+  segment_duration: 1
   verbose: True
   disable_save: False
 
   # Training Hyperparameters
   random_seed: 0
-  start_epoch: 100
-  n_epochs: 200
+  start_epoch: 0
+  n_epochs: 150
   pretrain_epoch: 50
   validation_steps: 5000
   random_sample : 10

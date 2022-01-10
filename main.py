@@ -309,7 +309,7 @@ def main():
             sdr = SISDRLoss()
             if config.mono:
                 sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2), x_t_1.squeeze(1).unsqueeze(2))
-            else
+            else:
                 sdr_loss = sdr(x_pred_t_mono.unsqueeze(2), x_t_1_mono.unsqueeze(2))
 
             D_fake_det = netD(x_pred_t.to(device).detach())

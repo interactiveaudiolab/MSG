@@ -180,7 +180,7 @@ class NLayerDiscriminator(nn.Module):
 
         model["layer_0"] = nn.Sequential(
             nn.ReflectionPad1d(7),
-            WNConv1d(2, ndf, kernel_size=15),
+            WNConv1d(1, ndf, kernel_size=15),
             nn.LeakyReLU(0.2, True),
         )
 

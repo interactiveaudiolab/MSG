@@ -95,19 +95,6 @@ def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_s
         torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
 
 
-def mel_spec_loss(target,estimated):
-    eps = 1e-5
-
-    target_spec = torch.stft(input=target, nfft=1024)
-    real_part, imag_part = target_spec.unbind(-1)
-    target_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 + eps))
-    
-    estimated_spec = torch.stft(input=estimated, nfft=1024)
-    real_part, imag_part = estimated_spec.unbind(-1)
-    estimated_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 +eps))
-
-    return F.l1_loss(target_mag_spec,estimated_mag_spec)
-
 def run_validate(valid_loader, netG, netD, config):
     disc_losses = []
     gen_losses = []
@@ -146,12 +133,7 @@ def run_validate(valid_loader, netG, netD, config):
             s_error = F.l1_loss(s_test, s_pred_t)
 
             if iterno == int(config.random_sample):
-                if config.mono:
-                    output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(),
-                                x_t_1.squeeze(0).squeeze(0).cpu().numpy(),
-                                x_pred_t.squeeze(0).squeeze(0).cpu().numpy())
-                else:
-                    output_aud = (x_t_0.squeeze(0).cpu().numpy(), 
+                output_aud = (x_t_0.squeeze(0).cpu().numpy(), 
                                 x_t_1.squeeze(0).cpu().numpy(), 
                                 x_pred_t.squeeze(0).cpu().numpy())
 
@@ -396,7 +378,7 @@ def main():
                 (loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec* loss_feat_spec).backward()
                 optG.step()
             else:
-                wav_loss = F.l1_loss(x_t_1,x_pred_t)
+                wav_loss = F.l1_loss(x_t_0,x_pred_t)
 
                 (wav_loss).backward()
                 optG.step()
@@ -471,14 +453,10 @@ def main():
                 axes = [ax1,ax2,ax3]
 
                 for i in range(3):
-                    if not config.mono:
-                        aud_mono =  (aud[i][0,:] + aud[i][1,:])
-                        aud_mono /= np.max(np.abs(aud_mono))
-                        spec_data = librosa.feature.melspectrogram(y=aud_mono, sr=44100, n_mels=128,
+                    aud_mono =  (aud[i][0,:] + aud[i][1,:])
+                    aud_mono /= np.max(np.abs(aud_mono))
+                    spec_data = librosa.feature.melspectrogram(y=aud_mono, sr=44100, n_mels=128,
                                                         fmax=8000)
-                    else:
-                        spec_data = librosa.feature.melspectrogram(y=aud[i], sr=44100, n_mels=128,
-                                                                                        fmax=8000)
                     S_dB = librosa.power_to_db(spec_data, ref=np.max)
                     _fig_ax = librosa.display.specshow(S_dB, x_axis='time',
                                                     y_axis='mel', sr=config.sample_rate,

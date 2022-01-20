@@ -94,20 +94,6 @@ def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_s
         torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
         torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
 
-
-def mel_spec_loss(target,estimated):
-    eps = 1e-5
-
-    target_spec = torch.stft(input=target, nfft=1024)
-    real_part, imag_part = target_spec.unbind(-1)
-    target_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 + eps))
-    
-    estimated_spec = torch.stft(input=estimated, nfft=1024)
-    real_part, imag_part = estimated_spec.unbind(-1)
-    estimated_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 +eps))
-
-    return F.l1_loss(target_mag_spec,estimated_mag_spec)
-
 def run_validate(valid_loader, netG, netD, config):
     disc_losses = []
     gen_losses = []

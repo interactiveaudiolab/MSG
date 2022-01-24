@@ -17,7 +17,7 @@ import imageio
 
 import torch.nn as nn
 
-from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel, SISDRLoss
+from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel
 from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
@@ -175,10 +175,11 @@ def main():
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
             sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
-        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, optD_spec, writer, netD_spec)
+        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec, netD_spec)
 
         if epoch % config.validation_epoch==0:
-            _, costs, aud = rp.runEpoch(train_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, optD_spec, writer, netD_spec)
+            with torch.no_grad():
+                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec,  netD_spec, validation=True)
             sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_SDR, best_reconstruct, aud, costs)
 
 class ParameterError(Exception):

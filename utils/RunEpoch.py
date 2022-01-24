@@ -1,14 +1,16 @@
 import torch
 import torch.nn.functional as F
-from losses import *
-import save_and_log as sal
-from ..models.MelGAN import SISDRLoss
+from .losses import *
+from .save_and_log import  *
+
+import numpy as np
 
 
 def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
                 steps, writer, optD_spec=None, netD_spec=None,
                 validation=False):
-
+    costs = [[0,0,0,0,0,0,0]]
+    output_aud = None
     for iterno, x_t in enumerate(loader):
 
         if config.mono:
@@ -67,7 +69,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
         loss_D_spec += spectral_discriminator_loss(D_fake_det_spec, D_real_spec)
 
         if epoch >= config.pretrain_epoch and (
-                epoch <= 100 or epoch % config.l1interval != 0):
+                epoch <= 100 or epoch % config.l1interval != 0) and not validation:
             netD.zero_grad()
             loss_D.backward()
             optD.step()
@@ -89,24 +91,33 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
         loss_feat, loss_feat_spec = feature_loss(config, D_fake, D_real, D_fake_spec, D_real_spec)
 
         netG.zero_grad()
-        if epoch >= config.pretrain_epoch and (
-                epoch <= 100 or epoch % config.l1interval != 0):
-            torch.autograd.set_detect_anomaly(True)
-            (
-                        loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec * loss_feat_spec).backward()
-            optG.step()
-
-            (wav_loss).backward()
-            optG.step()
-
-        costs = [
-            [loss_D.item(), loss_G.item(), loss_feat.item(),
-             s_error.item(),
-             -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item()]]
+        if not validation:
+            if epoch >= config.pretrain_epoch and (
+                    epoch <= 100 or epoch % config.l1interval != 0):
+                torch.autograd.set_detect_anomaly(True)
+                (
+                            loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec * loss_feat_spec).backward()
+                optG.step()
+            else:
+                (wav_loss).backward()
+                optG.step()
+        if not validation:
+            costs = [
+                [loss_D.item(), loss_G.item(), loss_feat.item(),
+                s_error.item(),
+                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item()]]
+        else:
+            curr_costs = [loss_D.item(), loss_G.item(), loss_feat.item(),
+                s_error.item(),
+                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item()]
+            for i in range(len(costs[0])):
+                costs[0][i] += curr_costs[i]
         # Call basic log info
-        sal.basic_logs(costs, writer, steps, epoch, iterno)
+        if not validation:
+            basic_logs(costs, writer, steps, epoch, iterno)
+        else:
+            validation_writer(epoch,steps)
         steps += 1
-        output_aud = None
         if validation and iterno == int(config.random_sample):
             if config.mono:
                 output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(),
@@ -116,5 +127,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
                 output_aud = (x_t_0.squeeze(0).cpu().numpy(),
                               x_t_1.squeeze(0).cpu().numpy(),
                               x_pred_t.squeeze(0).cpu().numpy())
-
+    if validation:
+        for i in range(len(costs[0])):
+            costs[0][i] /= (iterno+1)
     return steps, costs, output_aud

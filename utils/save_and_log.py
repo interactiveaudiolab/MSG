@@ -39,6 +39,8 @@ def stdout_writer(epoch, iterno, costs):
                         [Reconstruction Loss: {costs[-1][3]:.4f}]\
                         [SDR: {costs[-1][4]:.4f}]')
 
+def validation_writer(epoch, steps):
+    sys.stdout.write(f'\r Validtation Step: Epoch {epoch}, Step {steps}')
 
 def wandb_writer(epoch, costs):
     wandb.log({
@@ -52,9 +54,12 @@ def wandb_writer(epoch, costs):
         'epoch': epoch
     })
 
+
+
+
 def basic_logs(costs, writer, steps, epoch, iterno):
     log_writer(writer, costs, steps)
-    stdout_writer(epoch, iterno, steps)
+    stdout_writer(epoch, iterno, costs)
     wandb_writer(epoch, costs)
 
 
@@ -81,24 +86,24 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
                     caption="Demucs Sample",
                     sample_rate=config.sample_rate
                 )]})
-    if costs[4] > best_SDR and not config.disable_save:
+    if costs[-1][4] > best_SDR and not config.disable_save:
         save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
                    netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config)
-        best_SDR = costs[4]
-    if costs[3] < best_reconstruct and not config.disable_save:
+        best_SDR = costs[-1][4]
+    if costs[-1][3] < best_reconstruct and not config.disable_save:
         save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
                    netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config)
-        best_reconstruct = costs[3]
+        best_reconstruct = costs[-1][3]
     wandb.log({
-        'Valid Generator Loss': costs[1],
-        'Valid Discriminator Loss': costs[0],
-        'Valid Feature Loss': costs[2],
-        'Valid Reconstruction Loss': costs[3],
-        'Valid SDR': costs[4]
+        'Valid Generator Loss': costs[-1][1],
+        'Valid Discriminator Loss': costs[-1][0],
+        'Valid Feature Loss': costs[-1][2],
+        'Valid Reconstruction Loss': costs[-1][3],
+        'Valid SDR': costs[-1][4]
     })
     sf.write(f'generated_{steps}.wav', np.transpose(aud[2]),
              config.sample_rate)

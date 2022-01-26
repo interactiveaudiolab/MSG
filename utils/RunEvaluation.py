@@ -1,5 +1,5 @@
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 
 import nussl
 import librosa
@@ -21,7 +21,7 @@ class Struct:
 def parseConfig(config):
     exp_dict = yaml.load(open(os.path.join(config), 'r'),
                          Loader=yaml.FullLoader)
-    return Struct(**exp_dict)
+    return Struct(**exp_dict).parameters
 
 
 def run_inference(netG, ds, start, end, shift, reduction_factor, device):
@@ -134,7 +134,7 @@ def Evaluate(config) -> tuple:
     eval_set = EV.EvalSet(dataset_path=config.dataset_path,
                           item_length=config.segment_duration,
                           sample_rate=config.sample_rate,
-                          sources=(config.source,),
+                          sources=(f'dirty_{config.source}',config.source),
                           as_dict=False,
                           hop_length=config.hop_len)
 

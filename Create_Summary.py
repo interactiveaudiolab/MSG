@@ -35,10 +35,11 @@ with open('summary.csv', 'w') as f:
     for item in titles:
         f.write(item+', ') if item != titles[-1] else f.write(item)
     f.write('\n')
-    for result in msg_results:
-        result = str(result).replace(',', ';')
-        f.write(result+', ') if result != msg_results[-1] else f.write(result)
     for result in demucs_results:
+        result = str(result).replace(',', ';')
+        f.write(result+', ') if result != demucs_results[-1] else f.write(result)
+    f.write('\n')
+    for result in msg_results:
         result = str(result).replace(',', ';')
         f.write(result+', ') if result != msg_results[-1] else f.write(result)
     f.write('\n')

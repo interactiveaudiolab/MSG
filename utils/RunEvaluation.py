@@ -9,6 +9,7 @@ from collections import namedtuple
 from model_factory import ModelFactory
 import datasets.EvaluationDataset as EV
 import numpy as np
+import soundfile as sf
 
 class Struct:
      def __init__(self, **entries):
@@ -150,13 +151,15 @@ def Evaluate(config) -> tuple:
     measurements_msg = []
 
     with torch.no_grad():
-        for start, end in song_indices:
+        for iterno, (start, end) in enumerate(song_indices):
             noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
                                                                 start, end,
                                                                 shift,
                                                                 reduction_factor,
                                                                 device)
             ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
+            if iterno in [0,1,6,25]:
+                sf.write(f'generated_sample_{iterno}.wav', generated.T, 44100)
             measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
             measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
 

@@ -8,7 +8,7 @@ parameters:
   use_mix: False
   multi_disc: True
   audio_channels: 1
-  debug: False
+  debug: True
   mono: True
   # Directories
   model_save_dir: '/home/noah/saves/demucs_test_mod/'

@@ -4,7 +4,7 @@ id: msg_baseline
 parameters:
 
   # Directories
-  model_load_path: '/home/noah/saves/demucs_test_mod/49netG.pt'
+  model_load_path: '/home/noah/saves/demucs_test_mod/24netG.pt'
   dataset_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
   log_dir: '/home/noah/logs'
   run_id: demucs_baseline

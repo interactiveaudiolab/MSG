@@ -1,0 +1,3 @@
+Experiment, BSSEval SDRv4, SAR, SIR, Developer Sentiment 0 (worst) - 10 (best), notes
+Demucs Baseline, 12.001827445648107, 12.044767399068675, 25.18654224574074, 5, demucs is the baseline; use its sentiment score as a reference value, 
+name of experiment, 11.149273486453142, 10.85886429190538, 25.381611053125418, 2, optional

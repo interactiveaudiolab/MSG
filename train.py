@@ -99,14 +99,6 @@ def train(yaml_file=None):
     exp_dict = yaml.load(open(os.path.join(exp_file_path), 'r'),
         Loader=yaml.FullLoader)
 
-    if len(exp_args) > 0:
-        try:
-            new_args = parse_args(exp_args)
-        except IndexError:
-            raise ParameterError('Cannot parse input parameters!')
-        new_dict = update_parameters(exp_dict['parameters'], new_args)
-        exp_dict['parameters'] = new_dict
-
     params = exp_dict['parameters']
 
     wandb.init(config=params)
@@ -169,6 +161,7 @@ def train(yaml_file=None):
     costs = []
     netG.train()
     netD.train()
+    best_g = None
     if config.multi_disc:
         netD_spec.train()
     steps = 0
@@ -183,8 +176,8 @@ def train(yaml_file=None):
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
                 _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec,  netD_spec, validation=True)
-            sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_SDR, best_reconstruct, aud, costs)
-    return wandb.run.get_url()
+            best_g = sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_SDR, best_reconstruct, aud, costs,best_g)
+    return wandb.run.get_url(), best_g
 class ParameterError(Exception):
     pass
 

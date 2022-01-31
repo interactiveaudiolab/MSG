@@ -20,7 +20,7 @@ def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_s
     if spec:
         torch.save(netD_spec, save_path  +  str(epoch) + "netD_spec.pt")
         torch.save(optD_spec, save_path   +  str(epoch) + "optD_spec.pt")
-
+    return save_path +  str(epoch) + "netG.pt"
 
 def log_writer(writer, costs, steps):
     writer.add_scalar("loss/discriminator", costs[-1][0], steps)
@@ -64,12 +64,10 @@ def basic_logs(costs, writer, steps, epoch, iterno):
 
 
 def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
-                   steps, epoch, config, best_SDR, best_reconstruct, aud, costs):
+                   steps, epoch, config, best_SDR, best_reconstruct, aud, costs, best_g):
     ######################
     # Update tensorboard #
     ######################
-
-
     if epoch == 0:
         sf.write('validation_original.wav', np.transpose(aud[1]),
                  config.sample_rate)
@@ -87,13 +85,13 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
                     sample_rate=config.sample_rate
                 )]})
     if costs[-1][4] > best_SDR and not config.disable_save:
-        save_model(config.model_save_dir, netG.state_dict(),
+        best_g = save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
                    netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config)
         best_SDR = costs[-1][4]
     if costs[-1][3] < best_reconstruct and not config.disable_save:
-        save_model(config.model_save_dir, netG.state_dict(),
+        best_g = save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
                    netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config)
@@ -142,3 +140,4 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
     wandb.log({f'Spectrograms, {steps} Steps':
                    [wandb.Image(
                        imageio.imread(f'spectrogram_{steps}.png'))]})
+    return best_g

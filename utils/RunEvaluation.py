@@ -116,7 +116,7 @@ def convert_to_audio(noisy, ground_truth, mixture, generated):
            generated_remaining_sources
 
 
-def Evaluate(config) -> tuple:
+def Evaluate(config, best_g) -> tuple:
     # get device
     device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -127,7 +127,7 @@ def Evaluate(config) -> tuple:
     model_selector = ModelFactory(config, torch.optim.Adam)
     netG = model_selector.generator().to(device)
     netG.load_state_dict(
-        torch.load(config.model_load_path))
+        torch.load(best_g))
 
     # create the dataset
     # no need for a wrapper because we are iterating over single items in the

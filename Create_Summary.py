@@ -4,11 +4,11 @@ Experiment name, SD-SDR, SI-SDR, SNR, SIR, SAR, Developer Sentiment
 """
 import argparse
 import utils.RunEvaluation as RE
-def create_summary(wandb_url, name=None, config=None, sentiment='', notes=''):
+def create_summary(wandb_url,best_g, name=None, config=None, sentiment='', notes=''):
     # run Evaluate
     # request user feedback
     if config:
-        demucs_medians, msg_medians = RE.Evaluate(exp.config)
+        demucs_medians, msg_medians = RE.Evaluate(exp.config,best_g)
         msg_results = [name, msg_medians[0], msg_medians[1], msg_medians[2],
                 sentiment, notes, wandb_url]
     else:   
@@ -51,4 +51,4 @@ def create_summary(wandb_url, name=None, config=None, sentiment='', notes=''):
             f.write(result+', ') if result != msg_results[-1] else f.write(result)
         f.write('\n')
 if __name__ == '__main__':
-    create_summary('')
+    create_summary('', '')

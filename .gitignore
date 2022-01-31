@@ -132,3 +132,7 @@ dmypy.json
 saves*
 runs*
 wandb*
+nohup.out
+*.png*
+*.wav*
+*.csv*

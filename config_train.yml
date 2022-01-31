@@ -36,6 +36,7 @@ parameters:
   source: 'bass'
   gpus: [1]
   l1interval: 10
+  autobalance_ratios: [1,1,1]
 
   # Optimizer Hyperparameters
   lr: 0.0001

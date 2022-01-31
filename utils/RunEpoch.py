@@ -10,6 +10,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
                 steps, writer, optD_spec=None, netD_spec=None,
                 validation=False):
     costs = [[0,0,0,0,0,0,0]]
+    autobalance = AutoBalance(config.autobalance_ratios)
     output_aud = None
     for iterno, x_t in enumerate(loader):
 
@@ -95,8 +96,8 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
             if epoch >= config.pretrain_epoch and (
                     epoch <= 100 or epoch % config.l1interval != 0):
                 torch.autograd.set_detect_anomaly(True)
-                (
-                            loss_G + config.lambda_feat * loss_feat + config.lambda_feat_spec * loss_feat_spec).backward()
+                total_generator_loss = sum(autobalance(loss_G,loss_feat,loss_feat_spec))
+                total_generator_loss.backward()
                 optG.step()
             else:
                 (wav_loss).backward()

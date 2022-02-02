@@ -103,12 +103,12 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
         'Valid Reconstruction Loss': costs[-1][3],
         'Valid SDR': costs[-1][4]
     })
-    sf.write(f'generated_{steps}.wav', np.transpose(aud[2]),
+    sf.write(f'generated_{epoch}.wav', np.transpose(aud[2]),
              config.sample_rate)
-    wandb.log({f'{steps} Steps':
+    wandb.log({f'{epoch} Steps':
         [wandb.Audio(
-            f'generated_{steps}.wav',
-            caption=f'Generated Audio, {steps} Steps',
+            f'generated_{epoch}.wav',
+            caption=f'Generated Audio, {epoch} Epochs',
             sample_rate=44100
         )]
     })

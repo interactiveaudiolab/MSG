@@ -26,7 +26,7 @@ parameters:
   # Training Hyperparameters
   random_seed: 0
   start_epoch: 0
-  n_epochs: 10
+  n_epochs: 5
   pretrain_epoch: 50
   validation_epoch: 5
   random_sample : 10

@@ -1,6 +1,7 @@
 import torch 
 import torch.nn.functional as F
 import torch.nn as nn
+import numpy as np
 from typing import List
 
 def disc_outputs(config, x_pred_t, x_t_1, device, netD_spec):

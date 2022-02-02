@@ -105,7 +105,7 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
     })
     sf.write(f'generated_{epoch}.wav', np.transpose(aud[2]),
              config.sample_rate)
-    wandb.log({f'{epoch} Steps':
+    wandb.log({f'{epoch} Epochs':
         [wandb.Audio(
             f'generated_{epoch}.wav',
             caption=f'Generated Audio, {epoch} Epochs',

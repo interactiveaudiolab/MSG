@@ -132,7 +132,7 @@ def Evaluate(config, best_g) -> tuple:
     # create the dataset
     # no need for a wrapper because we are iterating over single items in the
     # set (no batches)
-    eval_set = EV.EvalSet(dataset_path=config.dataset_path,
+    eval_set = EV.EvalSet(dataset_path=config.test_sources_path,
                           item_length=config.segment_duration,
                           sample_rate=config.sample_rate,
                           sources=(f'dirty_{config.source}',config.source),

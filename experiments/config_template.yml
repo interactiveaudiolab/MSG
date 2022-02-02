@@ -16,6 +16,7 @@ parameters:
   train_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTrainDatasetFolder'
   valid_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
   
+  
   # Dataloader parameters
   sample_rate: 44100
   mix_folder: 'mixture'
@@ -60,6 +61,8 @@ parameters:
   splits: [1,2]
   split_weights: [[1],[1,1]]
 
-
+  #Evaluation Hyperparameters
+  hop_len: .1
+  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
 
 start_time: '20200225_20_43_41'

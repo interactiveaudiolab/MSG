@@ -9,3 +9,6 @@ tqdm
 ffmpeg-python
 sox
 pylint
+julius
+diffq
+imageio

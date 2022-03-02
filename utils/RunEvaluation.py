@@ -116,7 +116,8 @@ def convert_to_audio(noisy, ground_truth, mixture, generated):
            generated_remaining_sources
 
 
-def Evaluate(config, best_g) -> tuple:
+def Evaluate(config, best_g, names) -> tuple:
+    best_g = [best_g] if isinstance(best_g, str) else best_g
     # get device
     device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -126,8 +127,7 @@ def Evaluate(config, best_g) -> tuple:
     # load the generator, load the checkpoint, send to device
     model_selector = ModelFactory(config, torch.optim.Adam)
     netG = model_selector.generator().to(device)
-    netG.load_state_dict(
-        torch.load(best_g))
+    measurements = []
 
     # create the dataset
     # no need for a wrapper because we are iterating over single items in the
@@ -139,32 +139,41 @@ def Evaluate(config, best_g) -> tuple:
                           as_dict=False,
                           hop_length=config.hop_len)
 
-
-    # run evaluation on each song:
-    netG.eval()
-
     # list of start indices and end indices
     song_indices = eval_set.get_song_indices()
     shift = int(1 / config.hop_len)
     reduction_factor = int(44100 * config.hop_len)
-    measurements_demucs = []
-    measurements_msg = []
 
-    with torch.no_grad():
-        for iterno, (start, end) in enumerate(song_indices):
-            noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
-                                                                start, end,
-                                                                shift,
-                                                                reduction_factor,
-                                                                device)
-            ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
-            if iterno in [0,1,6,25]:
-                sf.write(f'generated_sample_{iterno}.wav', generated.T, 44100)
-            measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
-            measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
+    first_iter = True
 
-    median_demucs = np.nanmedian(measurements_demucs, axis=0)
-    median_msg = np.nanmedian(measurements_msg, axis=0)
+    for i in range(len(best_g)):
+        netG.load_state_dict(
+            torch.load(best_g[i]))
 
 
-    return median_demucs, median_msg
+        # run evaluation on each song:
+        netG.eval()
+
+        measurements_demucs = []
+        measurements_msg = []
+        with torch.no_grad():
+            for iterno, (start, end) in enumerate(song_indices):
+                noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
+                                                                    start, end,
+                                                                    shift,
+                                                                    reduction_factor,
+                                                                    device)
+                ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
+                if iterno in [0,1,6,25]:
+                    if first_iter:
+                        sf.write(f'generated_{names[0]}_{iterno}.wav', noisy.T, 44100)
+                    sf.write(f'generated_{names[i+1]}_{iterno}.wav', generated.T, 44100)
+                if first_iter:
+                    measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
+                measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
+            if first_iter:
+                measurements.append(np.nanmedian(measurements_demucs, axis=0))
+            measurements.append(np.nanmedian(measurements_msg, axis=0))
+            first_iter = False
+
+    return measurements

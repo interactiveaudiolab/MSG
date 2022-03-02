@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/noah/msg_training/Create_Summary.py", line 58, in <module>
+    create_summary('', '')
+  File "/home/noah/msg_training/Create_Summary.py", line 33, in create_summary
+    medians = RE.Evaluate(exp.config, exp.best_checkpoint,['demucs','msg'])
+  File "/home/noah/msg_training/utils/RunEvaluation.py", line 129, in Evaluate
+    netG = model_selector.generator().to(device)
+  File "/home/noah/msg_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 899, in to
+    return self._apply(convert)
+  File "/home/noah/msg_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 570, in _apply
+    module._apply(fn)
+  File "/home/noah/msg_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 593, in _apply
+    param_applied = fn(param)
+  File "/home/noah/msg_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 897, in convert
+    return t.to(device, dtype if t.is_floating_point() or t.is_complex() else None, non_blocking)
+KeyboardInterrupt

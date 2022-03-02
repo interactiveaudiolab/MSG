@@ -9,8 +9,10 @@ import numpy as np
 def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
                 steps, writer, optD_spec=None, netD_spec=None,
                 validation=False):
-    costs = [[0,0,0,0,0,0,0]]
-    autobalance = AutoBalance(config.autobalance_ratios)
+    costs = [[0,0,0,0,0,0,0,0]]
+    pretrain_autobalancer = AutoBalance(config.pretrain_autobalance_ratios)
+    cirriculum_autobalancer = AutoBalance(config.cirriculum_autobalance_ratios)
+    adv_autobalancer = AutoBalance(config.adv_autobalance_ratios)
     output_aud = None
     for iterno, x_t in enumerate(loader):
 
@@ -33,16 +35,14 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
         if not config.mono:
             x_pred_t_mono = (x_pred_t[:, 0, :] + x_pred_t[:, 1, :])
             x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
-            s_pred_t = fft(x_pred_t_mono.unsqueeze(1))
-            s_test = fft(x_t_1_mono.unsqueeze(1))
+            mel_reconstruction_loss = mel_spec_loss(x_pred_t_mono.squeeze(1),x_t_1_mono.squeeze(1))
         else:
-            s_pred_t = fft(x_pred_t)
-            s_test = fft(x_t_1)
+            mel_reconstruction_loss = mel_spec_loss(x_pred_t.squeeze(1),x_t_1.squeeze(1))
 
         #######################
         # L1, SDR Loss        #
         #######################
-        s_error = F.l1_loss(s_test, s_pred_t)
+        
         sdr = SISDRLoss()
         if config.mono:
             sdr_loss = sdr(x_pred_t.squeeze(1).unsqueeze(2),
@@ -69,8 +69,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
         loss_D += waveform_discriminator_loss(D_fake_det, D_real)
         loss_D_spec += spectral_discriminator_loss(D_fake_det_spec, D_real_spec)
 
-        if epoch >= config.pretrain_epoch and (
-                epoch <= 100 or epoch % config.l1interval != 0) and not validation:
+        if epoch >= config.pretrain_epoch and not validation:
             netD.zero_grad()
             loss_D.backward()
             optD.step()
@@ -93,24 +92,27 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
 
         netG.zero_grad()
         if not validation:
-            if epoch >= config.pretrain_epoch and (
-                    epoch <= 100 or epoch % config.l1interval != 0):
-                torch.autograd.set_detect_anomaly(True)
-                total_generator_loss = sum(autobalance(loss_G,loss_feat,loss_feat_spec))
+            if epoch >= config.pretrain_epoch and epoch<2*config.pretrain_epoch:
+                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,loss_feat_spec))
+                total_generator_loss.backward()
+                optG.step()
+            elif epoch>= 2*config.pretrain_epoch:
+                total_generator_loss = sum(cirriculum_autobalancer(loss_G,loss_feat,loss_feat_spec,wav_loss, mel_reconstruction_loss))
                 total_generator_loss.backward()
                 optG.step()
             else:
-                (wav_loss).backward()
+                pretrain_loss = sum(pretrain_autobalancer(wav_loss,mel_reconstruction_loss))
+                pretrain_loss.backward()
                 optG.step()
         if not validation:
             costs = [
                 [loss_D.item(), loss_G.item(), loss_feat.item(),
-                s_error.item(),
-                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item()]]
+                mel_reconstruction_loss.item(),
+                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item(), wav_loss.item()]]
         else:
             curr_costs = [loss_D.item(), loss_G.item(), loss_feat.item(),
-                s_error.item(),
-                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item()]
+                mel_reconstruction_loss.item(),
+                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item(), wav_loss.item()]
             for i in range(len(costs[0])):
                 costs[0][i] += curr_costs[i]
         # Call basic log info

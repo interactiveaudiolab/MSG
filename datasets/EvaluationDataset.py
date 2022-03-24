@@ -61,9 +61,9 @@ class EvalSet(Dataset):
                     #"pad": self.item_length * self.sample_rate * (i + 1) >
                     #      array.shape[0],
                     "pad": (target_duration * i + self.item_length) > array.shape[0]/self.sample_rate,
-                    "last_item": i==(int(array.shape[0] / (target_duration*44100))-1)
+                    "last_item": i==(int(array.shape[0] / (target_duration*self.sample_rate))-1)
                 }
-                for i in range(int(array.shape[0] / (target_duration*44100)))
+                for i in range(int(array.shape[0] / (target_duration*self.sample_rate)))
             ]
             metadata += starts
             song_starts.append((len(metadata)-len(starts), len(metadata)-1))
@@ -129,7 +129,7 @@ class EvalSet(Dataset):
             return_value["last_item"] = current_item["last_item"]
         else:
             return_value = [current_item["last_item"]]+return_value
-        return return_value
+        return return_value, current_item["filename"]
 
     def __len__(self):
         return len(self.metadata)

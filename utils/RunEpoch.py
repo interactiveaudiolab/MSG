@@ -27,7 +27,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
             x_t_1_mono = (x_t_1[:, 0, :] + x_t_1[:, 1, :])
             x_t_1_mono /= torch.max(torch.abs(x_t_1_mono))
 
-        inp = F.pad(x_t_0, (2900, 2900), "constant", 0)
+        inp = F.pad(x_t_0, (4000, 4000), "constant", 0)
 
         x_pred_t = netG(inp, x_t_0.unsqueeze(1)).squeeze(1)
         wav_loss = F.l1_loss(x_t_1, x_pred_t)

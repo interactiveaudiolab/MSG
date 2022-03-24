@@ -136,7 +136,7 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
         [wandb.Audio(
             f'generated_{epoch}.wav',
             caption=f'Generated Audio, {epoch} Epochs',
-            sample_rate=44100
+            sample_rate= config.sample_rate
         )]
     })
 
@@ -150,11 +150,11 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
             aud_mono = (aud[i][0, :] + aud[i][1, :])
             aud_mono /= np.max(np.abs(aud_mono))
             spec_data = librosa.feature.melspectrogram(y=aud_mono,
-                                                       sr=44100,
+                                                       sr=config.sample_rate,
                                                        n_mels=128,
                                                        fmax=8000)
         else:
-            spec_data = librosa.feature.melspectrogram(y=aud[i], sr=44100,
+            spec_data = librosa.feature.melspectrogram(y=aud[i], sr=config.sample_rate,
                                                        n_mels=128,
                                                        fmax=8000)
         S_dB = librosa.power_to_db(spec_data, ref=np.max)

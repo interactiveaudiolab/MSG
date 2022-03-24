@@ -33,13 +33,13 @@ def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     mix = np.zeros((song_length + shift) * reduction_factor)
     for i in range(start, end + 1, 1):
         # second is to perform SDR, SIR, SAR evaluation on each song
-        source_class = ds[i]
+        source_class, _ = ds[i]
         noisy_source = torch.from_numpy(source_class[1]).unsqueeze(0).unsqueeze(0).to(device)
         ground_truth_source = source_class[2]
         mixture_segment = source_class[3]
 
         # perform the inference
-        inp = F.pad(noisy_source, (2900, 2900), "constant", 0)
+        inp = F.pad(noisy_source, (4000, 4000), "constant", 0)
         x_pred_t = netG(inp, noisy_source.unsqueeze(1)).squeeze(1)
         a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
 
@@ -142,7 +142,7 @@ def Evaluate(config, best_g, names) -> tuple:
     # list of start indices and end indices
     song_indices = eval_set.get_song_indices()
     shift = int(1 / config.hop_len)
-    reduction_factor = int(44100 * config.hop_len)
+    reduction_factor = int(config.sample_rate * config.hop_len)
 
     first_iter = True
 
@@ -150,7 +150,7 @@ def Evaluate(config, best_g, names) -> tuple:
         netG.load_state_dict(
             torch.load(best_g[i]))
 
-
+        
         # run evaluation on each song:
         netG.eval()
 
@@ -158,16 +158,19 @@ def Evaluate(config, best_g, names) -> tuple:
         measurements_msg = []
         with torch.no_grad():
             for iterno, (start, end) in enumerate(song_indices):
+                print(names[i+1],':', eval_set[start][1])
                 noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
                                                                     start, end,
                                                                     shift,
                                                                     reduction_factor,
                                                                     device)
                 ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
-                if iterno in [0,1,6,25]:
+                #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
+                if eval_set[start][1] in config.song_names:
                     if first_iter:
-                        sf.write(f'generated_{names[0]}_{iterno}.wav', noisy.T, 44100)
-                    sf.write(f'generated_{names[i+1]}_{iterno}.wav', generated.T, 44100)
+                        sf.write(f'Ground_Truth_{iterno}.wav', ground_truth.T, config.sample_rate)
+                        sf.write(f'generated_{names[0]}_{iterno}.wav', noisy.T, config.sample_rate)
+                    sf.write(f'generated_{names[i+1]}_{iterno}.wav', generated.T, config.sample_rate)
                 if first_iter:
                     measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
                 measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))

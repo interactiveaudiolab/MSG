@@ -66,7 +66,7 @@ parameters:
 
   #Evaluation Hyperparameters
   hop_len: .1
-  test_sources_path: '/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/test/WavenetData/'
+  test_sources_paths: ['/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/test/DemucsData16/','/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/test/WavenetData/']
   song_names: ["Al James - Schoolboy Facination.wav","Mu - Too Bright.wav","Ben Carrigan - We'll Talk About It All Tonight.wav"]
-  evaluation_model: 'wavenet'
+  evaluation_models: ['demucs', 'wavenet']
 start_time: '20200225_20_43_41'

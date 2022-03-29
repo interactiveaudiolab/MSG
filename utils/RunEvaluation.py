@@ -24,7 +24,6 @@ def parseConfig(config):
                          Loader=yaml.FullLoader)
     return Struct(**exp_dict).parameters
 
-
 def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     song_length = end - start
     generated = np.zeros((song_length + shift) * reduction_factor)
@@ -116,13 +115,28 @@ def convert_to_audio(noisy, ground_truth, mixture, generated):
            generated_remaining_sources
 
 
-def Evaluate(config, best_g, names) -> tuple:
+def Evaluate(config,best_g,names):
+    config = parseConfig(config)
     best_g = [best_g] if isinstance(best_g, str) else best_g
+    measurements = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
+    best_names = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
+    for i in range(len(config.test_sources_paths)):
+        measurement = EvaluateLoop(config,best_g,names,config.test_sources_paths[i],config.evaluation_models[i])
+        for j in range(len(measurement)):
+            measurements[j*2 + i] = measurement[j]
+            if j == 0:
+                best_names[j*2+i] = config.evaluation_models[i]
+            else:
+                best_names[j*2 + i] = names[j-1]
+    return measurements, best_names
+
+def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
+    
     # get device
     device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
     # load the config as an object
-    config = parseConfig(config)
+    
 
     # load the generator, load the checkpoint, send to device
     model_selector = ModelFactory(config, torch.optim.Adam)
@@ -132,7 +146,7 @@ def Evaluate(config, best_g, names) -> tuple:
     # create the dataset
     # no need for a wrapper because we are iterating over single items in the
     # set (no batches)
-    eval_set = EV.EvalSet(dataset_path=config.test_sources_path,
+    eval_set = EV.EvalSet(dataset_path=dataset_path,
                           item_length=config.segment_duration,
                           sample_rate=config.sample_rate,
                           sources=(f'dirty_{config.source}',config.source),
@@ -154,11 +168,11 @@ def Evaluate(config, best_g, names) -> tuple:
         # run evaluation on each song:
         netG.eval()
 
-        measurements_demucs = []
+        measurements_baseline = []
         measurements_msg = []
         with torch.no_grad():
             for iterno, (start, end) in enumerate(song_indices):
-                print(names[i+1],':', eval_set[start][1])
+                print(names[i],':', eval_set[start][1])
                 noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
                                                                     start, end,
                                                                     shift,
@@ -168,14 +182,14 @@ def Evaluate(config, best_g, names) -> tuple:
                 #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
                 if eval_set[start][1] in config.song_names:
                     if first_iter:
-                        sf.write(f'Ground_Truth_{iterno}.wav', ground_truth.T, config.sample_rate)
-                        sf.write(f'generated_{names[0]}_{iterno}.wav', noisy.T, config.sample_rate)
-                    sf.write(f'generated_{names[i+1]}_{iterno}.wav', generated.T, config.sample_rate)
+                        sf.write(f'Ground_Truth_{dataset_name}_{iterno}.wav', ground_truth_signal.peak_normalize().audio_data().T, config.sample_rate)
+                        sf.write(f'generated_{dataset_name}_{iterno}.wav', noisy_signal.peak_normalize().audio_data().T, config.sample_rate)
+                    sf.write(f'generated_{dataset_name}_{names[i]}_{iterno}.wav', generated_signal.peak_normalize().audio_data().T, config.sample_rate)
                 if first_iter:
-                    measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
+                    measurements_baseline.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
                 measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
             if first_iter:
-                measurements.append(np.nanmedian(measurements_demucs, axis=0))
+                measurements.append(np.nanmedian(measurements_baseline, axis=0))
             measurements.append(np.nanmedian(measurements_msg, axis=0))
             first_iter = False
 

@@ -182,9 +182,9 @@ def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
                 #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
                 if eval_set[start][1] in config.song_names:
                     if first_iter:
-                        sf.write(f'Ground_Truth_{dataset_name}_{iterno}.wav', ground_truth_signal.peak_normalize().audio_data().T, config.sample_rate)
-                        sf.write(f'generated_{dataset_name}_{iterno}.wav', noisy_signal.peak_normalize().audio_data().T, config.sample_rate)
-                    sf.write(f'generated_{dataset_name}_{names[i]}_{iterno}.wav', generated_signal.peak_normalize().audio_data().T, config.sample_rate)
+                        sf.write(f'Ground_Truth_{dataset_name}_{iterno}.wav', ground_truth_signal.peak_normalize().audio_data.T, config.sample_rate)
+                        sf.write(f'generated_{dataset_name}_{iterno}.wav', noisy_signal.peak_normalize().audio_data.T, config.sample_rate)
+                    sf.write(f'generated_{dataset_name}_{names[i]}_{iterno}.wav', generated_signal.peak_normalize().audio_data.T, config.sample_rate)
                 if first_iter:
                     measurements_baseline.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
                 measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))

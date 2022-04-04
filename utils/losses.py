@@ -54,11 +54,11 @@ def feature_loss(config, D_fake, D_real, D_fake_spec, D_real_spec):
 def mel_spec_loss(target,estimated):
     eps = 1e-5
 
-    target_spec = torch.stft(input=target, nfft=1024)
+    target_spec = torch.stft(input=target, n_fft=1024)
     real_part, imag_part = target_spec.unbind(-1)
     target_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 + eps))
     
-    estimated_spec = torch.stft(input=estimated, nfft=1024)
+    estimated_spec = torch.stft(input=estimated, n_fft=1024)
     real_part, imag_part = estimated_spec.unbind(-1)
     estimated_mag_spec = torch.log10(torch.sqrt(real_part**2 + imag_part**2 +eps))
 

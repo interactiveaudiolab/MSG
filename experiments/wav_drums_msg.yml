@@ -1,6 +1,6 @@
-description: Running Demucs  Model w/ Bass
-exp_name: MSG Demucs Bass
-id: msg_demucs_bass
+description: Running Demucs+Wavenet  Model w/ Drums
+exp_name: MSG Wave
+id: msg_demucs_wave
 parameters:
 
   # Model Parameters
@@ -11,14 +11,15 @@ parameters:
   debug: False
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/demucs_test_autobalancer/'
+  model_save_dir: '/home/noah/saves/waveform_drums/'
   model_load_dir: '/home/noah/saves/demucs_l1_bass_mono/'
-  train_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTrainDatasetFolder'
-  valid_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
+  train_sources_path: '/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/train'
+  valid_sources_path: '/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/valid'
+  
   
   
   # Dataloader parameters
-  sample_rate: 44100
+  sample_rate: 16000
   mix_folder: 'mixture'
   segment_duration: 1
   verbose: True
@@ -27,18 +28,19 @@ parameters:
   # Training Hyperparameters
   random_seed: 0
   start_epoch: 0
-  n_epochs: 150
-  pretrain_epoch: 50
+  n_epochs: 100
+  pretrain_epoch: 25
   validation_epoch: 5
   random_sample : 10
-  checkpoint_interval: 25
+  checkpoint_interval: 10
   batch_size: 24
   n_cpu: 4
-  source: 'bass'
+  source: 'drums'
   gpus: [1]
   l1interval: 10
-  adv_autobalance_ratios: [1,1,1,1,1]
-  pretrain_autobalance_ratios: [1,1]
+  pretrain_autobalance_ratios: [1,.1]
+  adv_autobalance_ratios: [1,1,1]
+  cirriculum_autobalance_ratios: [1,1,1,0.5,0.5]
 
   # Optimizer Hyperparameters
   lr: 0.0001
@@ -64,6 +66,7 @@ parameters:
 
   #Evaluation Hyperparameters
   hop_len: .1
-  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
-
+  test_sources_paths: ['/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/test/DemucsData16/','/home/boaz/datasets/DemucsDataset/wave2wave_separator_set16/test/WavenetData/']
+  song_names: ["Al James - Schoolboy Facination.wav","Mu - Too Bright.wav","Ben Carrigan - We'll Talk About It All Tonight.wav"]
+  evaluation_models: ['demucs','wavenet']
 start_time: '20200225_20_43_41'

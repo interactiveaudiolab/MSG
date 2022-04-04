@@ -11,7 +11,7 @@ parameters:
   debug: False
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/demucs_test_autobalancer/'
+  model_save_dir: '/home/noah/saves/demucs_mel_loss_backprop/'
   model_load_dir: '/home/noah/saves/demucs_l1_bass_mono/'
   train_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTrainDatasetFolder'
   valid_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
@@ -27,7 +27,7 @@ parameters:
   # Training Hyperparameters
   random_seed: 0
   start_epoch: 0
-  n_epochs: 150
+  n_epochs: 300
   pretrain_epoch: 50
   validation_epoch: 5
   random_sample : 10
@@ -64,6 +64,6 @@ parameters:
 
   #Evaluation Hyperparameters
   hop_len: .1
-  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
+  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTestDatasetFolder'
 
 start_time: '20200225_20_43_41'

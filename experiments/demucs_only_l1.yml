@@ -11,7 +11,7 @@ parameters:
   debug: False
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/demucs_test_autobalancer/'
+  model_save_dir: '/home/noah/saves/demucs_l1_ablation/'
   model_load_dir: '/home/noah/saves/demucs_l1_bass_mono/'
   train_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTrainDatasetFolder'
   valid_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
@@ -28,7 +28,7 @@ parameters:
   random_seed: 0
   start_epoch: 0
   n_epochs: 150
-  pretrain_epoch: 50
+  pretrain_epoch: 150
   validation_epoch: 5
   random_sample : 10
   checkpoint_interval: 25
@@ -37,8 +37,9 @@ parameters:
   source: 'bass'
   gpus: [1]
   l1interval: 10
-  adv_autobalance_ratios: [1,1,1,1,1]
   pretrain_autobalance_ratios: [1,1]
+  adv_autobalance_ratios: [1,1,1]
+  cirriculum_autobalance_ratios: [1,1,1,0.5,0.5]
 
   # Optimizer Hyperparameters
   lr: 0.0001
@@ -64,6 +65,6 @@ parameters:
 
   #Evaluation Hyperparameters
   hop_len: .1
-  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceValidationDatasetFolder'
+  test_sources_path: '/home/boaz/datasets/DemucsDataset/SalientSourceTestDatasetFolder'
 
 start_time: '20200225_20_43_41'

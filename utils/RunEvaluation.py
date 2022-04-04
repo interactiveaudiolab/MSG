@@ -24,7 +24,6 @@ def parseConfig(config):
                          Loader=yaml.FullLoader)
     return Struct(**exp_dict).parameters
 
-
 def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     song_length = end - start
     generated = np.zeros((song_length + shift) * reduction_factor)
@@ -33,13 +32,13 @@ def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     mix = np.zeros((song_length + shift) * reduction_factor)
     for i in range(start, end + 1, 1):
         # second is to perform SDR, SIR, SAR evaluation on each song
-        source_class = ds[i]
+        source_class, _ = ds[i]
         noisy_source = torch.from_numpy(source_class[1]).unsqueeze(0).unsqueeze(0).to(device)
         ground_truth_source = source_class[2]
         mixture_segment = source_class[3]
 
         # perform the inference
-        inp = F.pad(noisy_source, (2900, 2900), "constant", 0)
+        inp = F.pad(noisy_source, (4000, 4000), "constant", 0)
         x_pred_t = netG(inp, noisy_source.unsqueeze(1)).squeeze(1)
         a = x_pred_t.squeeze().squeeze().detach().cpu().numpy()
 
@@ -116,55 +115,82 @@ def convert_to_audio(noisy, ground_truth, mixture, generated):
            generated_remaining_sources
 
 
-def Evaluate(config, best_g) -> tuple:
+def Evaluate(config,best_g,names):
+    config = parseConfig(config)
+    best_g = [best_g] if isinstance(best_g, str) else best_g
+    measurements = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
+    best_names = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
+    for i in range(len(config.test_sources_paths)):
+        measurement = EvaluateLoop(config,best_g,names,config.test_sources_paths[i],config.evaluation_models[i])
+        for j in range(len(measurement)):
+            measurements[j*2 + i] = measurement[j]
+            if j == 0:
+                best_names[j*2+i] = config.evaluation_models[i]
+            else:
+                best_names[j*2 + i] = names[j-1]
+    return measurements, best_names
+
+def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
+    
     # get device
     device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
 
     # load the config as an object
-    config = parseConfig(config)
+    
 
     # load the generator, load the checkpoint, send to device
     model_selector = ModelFactory(config, torch.optim.Adam)
     netG = model_selector.generator().to(device)
-    netG.load_state_dict(
-        torch.load(best_g))
+    measurements = []
 
     # create the dataset
     # no need for a wrapper because we are iterating over single items in the
     # set (no batches)
-    eval_set = EV.EvalSet(dataset_path=config.test_sources_path,
+    eval_set = EV.EvalSet(dataset_path=dataset_path,
                           item_length=config.segment_duration,
                           sample_rate=config.sample_rate,
                           sources=(f'dirty_{config.source}',config.source),
                           as_dict=False,
                           hop_length=config.hop_len)
 
-
-    # run evaluation on each song:
-    netG.eval()
-
     # list of start indices and end indices
     song_indices = eval_set.get_song_indices()
     shift = int(1 / config.hop_len)
-    reduction_factor = int(44100 * config.hop_len)
-    measurements_demucs = []
-    measurements_msg = []
+    reduction_factor = int(config.sample_rate * config.hop_len)
 
-    with torch.no_grad():
-        for iterno, (start, end) in enumerate(song_indices):
-            noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
-                                                                start, end,
-                                                                shift,
-                                                                reduction_factor,
-                                                                device)
-            ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
-            if iterno in [0,1,6,25]:
-                sf.write(f'generated_sample_{iterno}.wav', generated.T, 44100)
-            measurements_demucs.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
-            measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
+    first_iter = True
 
-    median_demucs = np.nanmedian(measurements_demucs, axis=0)
-    median_msg = np.nanmedian(measurements_msg, axis=0)
+    for i in range(len(best_g)):
+        netG.load_state_dict(
+            torch.load(best_g[i]))
 
+        
+        # run evaluation on each song:
+        netG.eval()
 
-    return median_demucs, median_msg
+        measurements_baseline = []
+        measurements_msg = []
+        with torch.no_grad():
+            for iterno, (start, end) in enumerate(song_indices):
+                print(names[i],':', eval_set[start][1])
+                noisy, ground_truth, mix, generated = run_inference(netG, eval_set,
+                                                                    start, end,
+                                                                    shift,
+                                                                    reduction_factor,
+                                                                    device)
+                ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
+                #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
+                if eval_set[start][1] in config.song_names:
+                    if first_iter:
+                        sf.write(f'Ground_Truth_{dataset_name}_{iterno}.wav', ground_truth_signal.peak_normalize().audio_data.T, config.sample_rate)
+                        sf.write(f'generated_{dataset_name}_{iterno}.wav', noisy_signal.peak_normalize().audio_data.T, config.sample_rate)
+                    sf.write(f'generated_{dataset_name}_{names[i]}_{iterno}.wav', generated_signal.peak_normalize().audio_data.T, config.sample_rate)
+                if first_iter:
+                    measurements_baseline.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
+                measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
+            if first_iter:
+                measurements.append(np.nanmedian(measurements_baseline, axis=0))
+            measurements.append(np.nanmedian(measurements_msg, axis=0))
+            first_iter = False
+
+    return measurements

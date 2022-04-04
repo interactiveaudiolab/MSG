@@ -161,13 +161,14 @@ def train(yaml_file=None):
     costs = []
     netG.train()
     netD.train()
-    best_g = None
+    best_g = [None,None,None]
     if config.multi_disc:
         netD_spec.train()
     steps = 0
     sdr = SISDRLoss()
     best_SDR = 0
     best_reconstruct = 100
+    best_l1 = 100
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
             sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
@@ -176,7 +177,7 @@ def train(yaml_file=None):
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
                 _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec,  netD_spec, validation=True)
-            best_g = sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_SDR, best_reconstruct, aud, costs,best_g)
+            best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
     return wandb.run.get_url(), best_g
 class ParameterError(Exception):
     pass

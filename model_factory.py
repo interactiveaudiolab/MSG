@@ -2,6 +2,7 @@ from models.MelGAN import GeneratorMel, GeneratorMelMix, DiscriminatorMel, SpecD
 import numpy as np
 from models.Demucs import Demucs
 import torch
+from models.HiFiGAN import Discriminator
 
 
 class ModelFactory():
@@ -22,7 +23,7 @@ class ModelFactory():
         if self.config.multi_disc:
             return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
         else:
-            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)
+            return Discriminator()
 
 
 class MultiSpecDiscriminator():

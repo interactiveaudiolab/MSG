@@ -120,6 +120,50 @@ class AutoBalance(nn.Module):
         self.iters += 1
         return [w * l for w, l in zip(self.weights, loss_vals)]
 
+class GANLoss(nn.Module):
+    """
+    Computes a discriminator loss, given a discriminator on
+    generated waveforms/spectrograms compared to ground truth
+    waveforms/spectrograms. Computes the loss for both the
+    discriminator and the generator in separate functions.
+    """
+
+    def __init__(
+        self,
+        discriminator,
+        feature_weight: float = 10.0,
+    ):
+        super().__init__()
+
+        self.discriminator = discriminator
+        self.feature_weight = feature_weight
+
+    def discriminator_loss(self, fake, real):
+        d_fake = self.discriminator(fake.detach())
+        d_real = self.discriminator(real)
+
+        loss_d = 0
+        for scale in d_fake:
+            loss_d += F.mse_loss(scale[-1], torch.zeros_like(scale[-1]))
+        for scale in d_real:
+            loss_d += F.mse_loss(scale[-1], torch.ones_like(scale[-1]))
+        return loss_d
+
+    def generator_loss(self, fake, real):
+        d_fake = self.discriminator(fake)
+        d_real = self.discriminator(real)
+
+        loss_g = 0
+        for scale in d_fake:
+            loss_g += F.mse_loss(scale[-1], torch.ones_like(scale[-1]))
+
+        loss_feature = 0
+
+        for i in range(len(d_fake)):
+            for j in range(len(d_fake[i]) - 1):
+                loss_feature += F.l1_loss(d_fake[i][j], d_real[i][j].detach())
+        return loss_g, loss_feature
+
 class SISDRLoss(nn.Module):
     """
     Computes the Scale-Invariant Source-to-Distortion Ratio between a batch

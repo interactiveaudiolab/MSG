@@ -7,7 +7,7 @@ import librosa
 import imageio
 import torch
 
-def save_model(save_path, netG, netD, optG, optD ,epoch, spec, netD_spec, optD_spec, config, name=None):
+def save_model(save_path, netG, netD, optG, optD ,epoch, spec,config ,netD_spec=None, optD_spec=None,  name=None):
     '''
     Input: save_path (string), netG (state_dict), netD (state_dict),
     optG (torch.optim), optD(torch.optim)
@@ -58,12 +58,10 @@ def wandb_writer(epoch, costs):
     wandb.log({
         'Generator Loss': costs[-1][1],
         'Wav Discriminator Loss': costs[-1][0],
-        'Spec Discriminator Loss': costs[-1][5],
         'Wav Feature Loss': costs[-1][2],
-        'Spec Feature Loss': costs[-1][6],
         'Reconstruction Loss': costs[-1][3],
         'SDR': costs[-1][4],
-        'L1 Waveform Loss': costs[-1][7],
+        'L1 Waveform Loss': costs[-1][5],
         'epoch': epoch
     })
 
@@ -76,8 +74,7 @@ def basic_logs(costs, writer, steps, epoch, iterno):
     wandb_writer(epoch, costs)
 
 
-def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
-                   steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs, best_g):
+def iteration_logs(netD, netG, optG, optD, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs, best_g,netD_spec=None, optD_spec=None):
     ######################
     # Update tensorboard #
     ######################
@@ -98,27 +95,19 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
                     sample_rate=config.sample_rate
                 )]})
 
-    wandb.log({
-        'Best L1': best_l1,
-        'Best Reconstruction': best_reconstruct,
-        'Best SDR': best_SDR
-    })
-    if costs[-1][7] < best_l1 and not config.disable_save:
+    if costs[-1][5] < best_l1 and not config.disable_save:
         best_g[0] = save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
-                   netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config, name="best_l1_")
-        best_l1 = costs[-1][7]
+        best_l1 = costs[-1][5]
     if costs[-1][3] < best_reconstruct and not config.disable_save:
         best_g[1] = save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
-                   netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config, name="best_reconstruction_")
         best_reconstruct = costs[-1][3]
     if costs[-1][4] > best_SDR and not config.disable_save:
         best_g[2] = save_model(config.model_save_dir, netG.state_dict(),
                    netD.state_dict(), optG, optD, epoch, spec=True,
-                   netD_spec=netD_spec.state_dict(), optD_spec=optD_spec,
                    config=config, name="best_SDR_")
         best_SDR = costs[-1][4]
 
@@ -128,7 +117,7 @@ def iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec,
         'Valid Feature Loss': costs[-1][2],
         'Valid Reconstruction Loss': costs[-1][3],
         'Valid SDR': costs[-1][4],
-        'Valid L1 Waveform': costs[-1][7],
+        'Valid L1 Waveform': costs[-1][5],
     })
     sf.write(f'generated_{epoch}.wav', np.transpose(aud[2]),
              config.sample_rate)

@@ -120,10 +120,8 @@ def train(yaml_file=None):
         optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
-    #netG = nn.DataParallel(netG, device_ids=config.gpus)
-    #netD = nn.DataParallel(netD.to(device), device_ids=config.gpus)
-    #netD_spec = nn.DataParallel(netD_spec.to(device), device_ids=config.gpus)
-    fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
+
+
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     optD = torch.optim.Adam(netD.parameters(), lr=config.lr, betas=(config.b1,config.b2))
 
@@ -150,9 +148,6 @@ def train(yaml_file=None):
                                                                     "optG.pt").state_dict())
         optD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
                                                                     "optD.pt").state_dict())
-        optD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
-                                                                                "optD_spec.pt").state_dict())
-        netD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD_spec.pt"))
     ###################
     ##### TRAINING ####
     ###### LOOP #######
@@ -171,13 +166,13 @@ def train(yaml_file=None):
     best_l1 = 100
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
-            sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
-        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec, netD_spec)
+            sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=False, config=config)
+        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer)
 
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
-                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec,  netD_spec, validation=True)
-            best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
+                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, validation=True)
+            best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
     return wandb.run.get_url(), best_g
 class ParameterError(Exception):
     pass

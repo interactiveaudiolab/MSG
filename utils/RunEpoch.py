@@ -6,13 +6,12 @@ from .save_and_log import  *
 import numpy as np
 
 
-def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
+def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
                 steps, writer, optD_spec=None, netD_spec=None,
                 validation=False):
-    costs = [[0,0,0,0,0,0,0,0]]
-    pretrain_autobalancer = AutoBalance(config.pretrain_autobalance_ratios)
-    cirriculum_autobalancer = AutoBalance(config.cirriculum_autobalance_ratios)
+    costs = [[0,0,0,0,0,0]]
     adv_autobalancer = AutoBalance(config.adv_autobalance_ratios)
+    gan_loss_calculator = GANLoss(netD)
     output_aud = None
     for iterno, x_t in enumerate(loader):
 
@@ -53,66 +52,36 @@ def runEpoch(loader, config, netG, netD, optG, optD, fft, device, epoch,
         #######################
         # Train Discriminator #
         #######################
-        if config.mono:
-            D_fake_det_spec, D_real_spec = disc_outputs(
-                config, x_pred_t.squeeze(1), x_t_1.squeeze(1), device, netD_spec)
-        else:
-            D_fake_det_spec, D_real_spec = disc_outputs(
-                config, x_pred_t_mono, x_t_1_mono, device, netD_spec)
 
-        D_fake_det = netD(x_pred_t.to(device).detach())
-        D_real = netD(x_t_1.to(device))
+        fake = x_pred_t.to(device)
+        real = x_t_1.to(device)
+        loss_D = gan_loss_calculator.discriminator_loss(fake, real)
 
 
-        loss_D = 0
-        loss_D_spec = 0
-        loss_D += waveform_discriminator_loss(D_fake_det, D_real)
-        loss_D_spec += spectral_discriminator_loss(D_fake_det_spec, D_real_spec)
-
-        if epoch >= config.pretrain_epoch and not validation:
+        if not validation:
             netD.zero_grad()
             loss_D.backward()
             optD.step()
-            netD_spec.zero_grad()
-            loss_D_spec.backward()
-            if config.multi_disc:
-                optD_spec.step()
 
         ###################
         # Train Generator #
         ###################
-        D_fake = netD(x_pred_t.to(device))
-        if config.mono:
-            D_fake_spec = netD_spec(x_pred_t.squeeze(1).to(device))
-        else:
-            D_fake_spec = netD_spec(x_pred_t_mono.to(device))
+        loss_G, loss_feat = gan_loss_calculator.generator_loss(fake,real)
 
-        loss_G = Gen_loss(D_fake, D_fake_spec)
-        loss_feat, loss_feat_spec = feature_loss(config, D_fake, D_real, D_fake_spec, D_real_spec)
-
-        netG.zero_grad()
         if not validation:
-            if epoch >= config.pretrain_epoch and epoch<2*config.pretrain_epoch:
-                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,loss_feat_spec))
-                total_generator_loss.backward()
-                optG.step()
-            elif epoch>= 2*config.pretrain_epoch:
-                total_generator_loss = sum(cirriculum_autobalancer(loss_G,loss_feat,loss_feat_spec,wav_loss, mel_reconstruction_loss))
-                total_generator_loss.backward()
-                optG.step()
-            else:
-                pretrain_loss = sum(pretrain_autobalancer(wav_loss,mel_reconstruction_loss))
-                pretrain_loss.backward()
-                optG.step()
-        if not validation:
+            netG.zero_grad()
+            total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
+            total_generator_loss.backward()
+            optG.step()
+            
             costs = [
                 [loss_D.item(), loss_G.item(), loss_feat.item(),
                 mel_reconstruction_loss.item(),
-                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item(), wav_loss.item()]]
+                -1 * sdr_loss, wav_loss.item()]]
         else:
             curr_costs = [loss_D.item(), loss_G.item(), loss_feat.item(),
                 mel_reconstruction_loss.item(),
-                -1 * sdr_loss, loss_D_spec.item(), loss_feat_spec.item(), wav_loss.item()]
+                -1 * sdr_loss, wav_loss.item()]
             for i in range(len(costs[0])):
                 costs[0][i] += curr_costs[i]
         # Call basic log info

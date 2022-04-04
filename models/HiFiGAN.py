@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 from torch.nn.utils import weight_norm
 
-from .base import BaseModel
 
 def WNConv1d(*args, **kwargs):
     return weight_norm(nn.Conv1d(*args, **kwargs))
@@ -91,7 +90,7 @@ class DiscriminatorS(nn.Module):
         return fmap
 
 
-class Discriminator(BaseModel):
+class Discriminator(nn.Module):
     def __init__(self, norm: str = "weight_norm"):
         super().__init__()
         periods = [2, 3, 5, 7, 11]

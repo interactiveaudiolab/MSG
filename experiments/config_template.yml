@@ -23,6 +23,9 @@ parameters:
   segment_duration: 1
   verbose: True
   disable_save: False
+  gt_percent: 4
+  mix_percent: 4
+  silent_percent: 3
 
   # Training Hyperparameters
   random_seed: 0

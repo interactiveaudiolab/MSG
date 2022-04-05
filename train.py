@@ -136,7 +136,10 @@ def train(yaml_file=None):
                                     sample_rate = config.sample_rate,
                                     segment_dur = config.segment_duration,
                                     verbose = config.verbose,
-                                    mono = config.mono
+                                    mono = config.mono,
+                                    silent_percent = config.percent_silent,
+                                    gt_percent = config.percent_gt,
+                                    mix_percent = config.percent_mix
                                     )
 
 

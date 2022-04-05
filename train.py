@@ -21,6 +21,7 @@ from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel
 from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
+from datasets.EvaluationDataset import EvalSetWrapper
 from utils.losses import *
 import utils.save_and_log as sal
 import utils.RunEpoch as rp
@@ -77,7 +78,7 @@ def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cp
     train_set = DatasetWrapper(train_path, source, **kwargs)
     train_loader = DataLoader(train_set, batch_size=batch_size,
                                num_workers=n_cpu, shuffle=True)
-    valid_set = DatasetWrapper(valid_path, source, **kwargs)
+    valid_set = EvalSetWrapper(valid_path, source, **kwargs)
     valid_loader = DataLoader(valid_set, batch_size=1,
                                num_workers=n_cpu, shuffle=False)
     return train_loader, valid_loader

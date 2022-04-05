@@ -12,7 +12,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
     costs = [[0,0,0,0,0,0]]
     adv_autobalancer = AutoBalance(config.adv_autobalance_ratios)
     gan_loss_calculator = GANLoss(netD)
-    output_aud = None
+    output_aud = [np.array([]),np.array([]),np.array([])]
     for iterno, x_t in enumerate(loader):
 
         if config.mono:
@@ -90,11 +90,11 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         else:
             validation_writer(epoch,steps)
         steps += 1
-        if validation and iterno == int(config.random_sample):
+        if validation and x[3] == config.validation_song:
             if config.mono:
-                output_aud = (x_t_0.squeeze(0).squeeze(0).cpu().numpy(),
-                              x_t_1.squeeze(0).squeeze(0).cpu().numpy(),
-                              x_pred_t.squeeze(0).squeeze(0).cpu().numpy())
+                output_aud[0] = np.concatenate((output_aud[0], x_t_0.squeeze(0).squeeze(0).cpu().numpy()))
+                output_aud[1] = np.concatenate((output_aud[1], x_t_1.squeeze(0).squeeze(0).cpu().numpy()))
+                output_aud[2] = np.concatenate((output_aud[2], x_pred_t.squeeze(0).squeeze(0).cpu().numpy()))
             else:
                 output_aud = (x_t_0.squeeze(0).cpu().numpy(),
                               x_t_1.squeeze(0).cpu().numpy(),

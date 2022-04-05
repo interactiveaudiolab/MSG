@@ -143,7 +143,7 @@ class EvalSetWrapper(Dataset):
 		current_item, current_filename = self.ds[item]
 		# current item is in order: last, dirty, clean, mix
 		# I need to return: dirty, clean, mix
-		return *current_item[1:]
+		return *current_item[1:], current_filename
 
 	def __len__(self):
 		return len(self.ds)

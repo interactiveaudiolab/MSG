@@ -5,10 +5,10 @@ parameters:
 
   # Model Parameters
   model: 'demucs'
-  use_mix: False
+  use_mix: Falsef
   multi_disc: False
   audio_channels: 1
-  debug: True
+  debug: False
   mono: True
   # Directories
   model_save_dir: '/home/noah/saves/demucs_vocals/'
@@ -23,17 +23,21 @@ parameters:
   mix_folder: 'mixture'
   segment_duration: 1
   verbose: True
-  disable_save: False
+  disable_save: True
 
   # Training Hyperparameters
   random_seed: 0
   start_epoch: 0
+  pretrain_epoch: 1
   n_epochs: 200
-  validation_epoch: 10
-  random_sample : 10
+  validation_epoch: 5
+  #random_sample : 10
+  validation_song: 'DemucsData16_James May - Dont Let Go.wav'
+  validation_song_start: 20
+  validation_song_end: 30
   checkpoint_interval: 10
   batch_size: 64
-  n_cpu: 4
+  n_cpu: 2
   source: 'vocals'
   gpus: [1]
   l1interval: 10

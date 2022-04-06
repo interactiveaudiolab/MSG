@@ -7,14 +7,14 @@ import numpy as np
 
 
 def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
-                steps, writer, optD_spec=None, netD_spec=None,
+                steps, writer, gen_autoclip,disc_autoclip ,optD_spec=None, netD_spec=None,
                 validation=False):
     costs = [[0,0,0,0,0,0]]
     adv_autobalancer = AutoBalance(config.adv_autobalance_ratios)
     gan_loss_calculator = GANLoss(netD)
     output_aud = [np.array([]),np.array([]),np.array([])]
+    validation_song_seconds = 0
     for iterno, x_t in enumerate(loader):
-
         if config.mono:
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
             x_t_1 = x_t[1].unsqueeze(1).float().to(device)
@@ -61,6 +61,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         if not validation:
             netD.zero_grad()
             loss_D.backward()
+            disc_autoclip(netD)
             optD.step()
 
         ###################
@@ -70,8 +71,12 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
 
         if not validation:
             netG.zero_grad()
-            total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
-            total_generator_loss.backward()
+            if epoch >= config.pretrain_epoch:
+                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
+                total_generator_loss.backward()
+            else:
+                mel_reconstruction_loss.backward()
+            gen_autoclip(netG)
             optG.step()
             
             costs = [
@@ -90,15 +95,15 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         else:
             validation_writer(epoch,steps)
         steps += 1
-        if validation and x[3] == config.validation_song:
-            if config.mono:
+        if validation and x_t[3][0] == config.validation_song:
+            if config.mono and validation_song_seconds >= config.validation_song_start and validation_song_seconds <= config.validation_song_end:
                 output_aud[0] = np.concatenate((output_aud[0], x_t_0.squeeze(0).squeeze(0).cpu().numpy()))
                 output_aud[1] = np.concatenate((output_aud[1], x_t_1.squeeze(0).squeeze(0).cpu().numpy()))
                 output_aud[2] = np.concatenate((output_aud[2], x_pred_t.squeeze(0).squeeze(0).cpu().numpy()))
-            else:
-                output_aud = (x_t_0.squeeze(0).cpu().numpy(),
-                              x_t_1.squeeze(0).cpu().numpy(),
-                              x_pred_t.squeeze(0).cpu().numpy())
+            validation_song_seconds += 1
+                #output_aud = (x_t_0.squeeze(0).cpu().numpy(),
+                              #x_t_1.squeeze(0).cpu().numpy(),
+                              #x_pred_t.squeeze(0).cpu().numpy())
     if validation:
         for i in range(len(costs[0])):
             costs[0][i] /= (iterno+1)

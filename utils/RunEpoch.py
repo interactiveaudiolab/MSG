@@ -76,7 +76,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
                 total_generator_loss.backward()
             else:
                 mel_reconstruction_loss.backward()
-            gen_autoclip(netG)
+            _, gen_grad_norm = gen_autoclip(netG)
             optG.step()
             
             costs = [

@@ -61,6 +61,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         if not validation:
             netD.zero_grad()
             loss_D.backward()
+            disc_autoclip(netD)
             optD.step()
 
         ###################
@@ -71,11 +72,11 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         if not validation:
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat))
+                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
                 total_generator_loss.backward()
             else:
                 mel_reconstruction_loss.backward()
-            _, gen_grad_norm = gen_autoclip(netG)
+            gen_autoclip(netG)
             optG.step()
             
             costs = [

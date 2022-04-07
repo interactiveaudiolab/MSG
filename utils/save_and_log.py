@@ -62,6 +62,7 @@ def wandb_writer(epoch, costs):
         'Reconstruction Loss': costs[-1][3],
         'SDR': costs[-1][4],
         'L1 Waveform Loss': costs[-1][5],
+        'Gen Grad Norm': costs[-1][6],
         'epoch': epoch
     })
 

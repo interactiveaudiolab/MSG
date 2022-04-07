@@ -16,7 +16,7 @@ class ModelFactory():
             else:
                 return GeneratorMel(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
         if self.config.model == "demucs":
-            return Demucs([self.config.source],audio_channels=self.config.audio_channels, samplerate=self.config.sample_rate ,segment_length=int(self.config.segment_duration * self.config.sample_rate), skip_cxn = self.config.skip_cxn)
+            return Demucs([self.config.source],audio_channels=self.config.audio_channels, samplerate=self.config.sample_rate ,segment_length=int(self.config.segment_duration * self.config.sample_rate), skip_cxn = self.config.skip_cxn,lstm_layers=0)
         else:
             raise ValueError('Invalid Model')
     def discriminator(self):

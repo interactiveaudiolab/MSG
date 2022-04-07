@@ -195,7 +195,7 @@ class Demucs(nn.Module):
             x = self.lstm(x)
         for decode in self.decoder:
             skip = center_trim(saved.pop(-1), x)
-            x = x + skip
+            x = x if not self.skip_cxn else x+skip
             x = decode(x)
 
         if self.resample:

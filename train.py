@@ -14,6 +14,7 @@ import librosa, librosa.display
 import soundfile as sf
 import matplotlib.pyplot as plt
 import imageio
+from utils.autoclip import AutoClip
 
 import torch.nn as nn
 
@@ -141,7 +142,8 @@ def train(yaml_file=None):
 
 
     start_epoch=config.start_epoch
-
+    gen_autoclip = AutoClip()
+    disc_autoclip = AutoClip()
     if start_epoch > 0:
         netG.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netG.pt"))
         netD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD.pt"))
@@ -168,11 +170,11 @@ def train(yaml_file=None):
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
             sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=False, config=config)
-        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer)
+        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer,gen_autoclip,disc_autoclip)
 
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
-                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, validation=True)
+                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, gen_autoclip, disc_autoclip, validation=True)
             best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
     return wandb.run.get_url(), best_g
 class ParameterError(Exception):

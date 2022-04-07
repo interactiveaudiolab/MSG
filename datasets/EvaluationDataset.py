@@ -137,7 +137,7 @@ class EvalSet(Dataset):
 class EvalSetWrapper(Dataset):
 	""" The gist is to mimic the behavior and instantiation of the salient ds"""
 	def __init__(self, path_to_ds, target, mono, **kwargs):
-		self.ds = EvalSet(dataset_path=path_to_ds, sources=(f'dirty_{target}',target), sample_rate=kwargs['sample_rate'], item_length=kwargs['segment_duration'], as_dict=False, hop_length=kwargs['segment_duration'])
+		self.ds = EvalSet(dataset_path=path_to_ds, sources=(f'dirty_{target}',target), sample_rate=kwargs['sample_rate'], item_length=kwargs['segment_dur'], as_dict=False, hop_length=kwargs['segment_dur'])
 		
 	def __getitem__(self, item):
 		current_item, current_filename = self.ds[item]

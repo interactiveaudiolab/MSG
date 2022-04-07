@@ -101,7 +101,7 @@ class Discriminator(nn.Module):
 
     def forward(self, y):
         # Peak normalize the volume of input audio
-        y = y / (y.abs().max(dim=-1, keepdim=True)[0] + 1e-9)
+        #y = y / (y.abs().max(dim=-1, keepdim=True)[0] + 1e-9)
 
         fmaps = []
         for i, d in enumerate(self.discriminators):

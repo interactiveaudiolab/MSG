@@ -11,7 +11,7 @@ parameters:
   debug: False
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/demucs_bass_2/'
+  model_save_dir: '/home/noah/saves/demucs_vocals_no_skip/'
   model_load_dir: '/home/noah/saves/demucs_vocals/'
   train_sources_path: '/home/boaz/datasets/DemucsDataset/demucs_separator_set16/train'
   valid_sources_path: '/home/boaz/datasets/DemucsDataset/demucs_separator_set16/valid'
@@ -31,22 +31,20 @@ parameters:
   percent_silent: 10
   random_seed: 0
   start_epoch: 0
-  pretrain_epoch: 0
+  pretrain_epoch: 20
   n_epochs: 200
   validation_epoch: 10
   #random_sample : 10
   validation_song: 'DemucsData16_James May - Dont Let Go.wav'
   validation_song_start: 20
   validation_song_end: 30
-  checkpoint_interval: 50
-  lstm_layers: 0
+  checkpoint_interval: 10
   batch_size: 64
   n_cpu: 2
-  source: 'bass'
+  source: 'vocals'
   gpus: [1]
   l1interval: 10
   adv_autobalance_ratios: [1,1,1]
-  autobalance_off : 1000
 
   # Optimizer Hyperparameters
   lr: 0.001
@@ -54,7 +52,7 @@ parameters:
   b2: .9
 
   #Generator Hyperparameters
-  skip_cxn: True
+  skip_cxn: False
 
   #Evaluation Hyperparameters
   hop_len: .1

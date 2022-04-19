@@ -10,7 +10,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
                 steps, writer, gen_autoclip,disc_autoclip ,optD_spec=None, netD_spec=None,
                 validation=False):
     costs = [[0,0,0,0,0,0,0]]
-    adv_autobalancer = AutoBalance(config.adv_autobalance_ratios)
+    adv_autobalancer = AutoBalance(config.adv_autobalance_ratios,max_iters=config.autobalance_off)
     gan_loss_calculator = GANLoss(netD)
     output_aud = [np.array([]),np.array([]),np.array([])]
     validation_song_seconds = 0
@@ -61,7 +61,6 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         if not validation:
             netD.zero_grad()
             loss_D.backward()
-            disc_autoclip(netD)
             optD.step()
 
         ###################

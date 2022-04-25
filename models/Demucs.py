@@ -208,6 +208,6 @@ class Demucs(nn.Module):
             x = x.view(x.size(0), len(self.sources), 1, x.size(-1))
         else:
             x = x.view(x.size(0), len(self.sources), self.audio_channels, x.size(-1))
-        if self.skip_cxn:
-            return x + aud
+        #if self.skip_cxn:
+         #   return x + aud
         return x

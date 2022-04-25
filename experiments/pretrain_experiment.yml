@@ -31,7 +31,7 @@ parameters:
   percent_silent: 0
   random_seed: 0
   start_epoch: 0
-  pretrain_epoch: 0
+  pretrain_epoch: 2
   n_epochs: 200
   validation_epoch: 10
   #random_sample : 10

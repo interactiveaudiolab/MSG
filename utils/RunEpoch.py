@@ -7,10 +7,9 @@ import numpy as np
 
 
 def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
-                steps, writer, gen_autoclip,disc_autoclip ,optD_spec=None, netD_spec=None,
+                steps, writer, gen_autoclip,disc_autoclip,adv_autobalancer ,optD_spec=None, netD_spec=None,
                 validation=False):
     costs = [[0,0,0,0,0,0,0]]
-    adv_autobalancer = AutoBalance(config.adv_autobalance_ratios,max_iters=config.autobalance_off)
     gan_loss_calculator = GANLoss(netD)
     output_aud = [np.array([]),np.array([]),np.array([])]
     validation_song_seconds = 0
@@ -58,7 +57,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         loss_D = gan_loss_calculator.discriminator_loss(fake, real)
 
 
-        if not validation:
+        if not validation and epoch>config.pretrain_epoch:
             netD.zero_grad()
             loss_D.backward()
             optD.step()
@@ -71,7 +70,10 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         if not validation:
             netG.zero_grad()
             if epoch >= config.pretrain_epoch:
-                total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
+                if config.adv_only:
+                    total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat))
+                else:   
+                    total_generator_loss = sum(adv_autobalancer(loss_G,loss_feat,mel_reconstruction_loss))
                 total_generator_loss.backward()
             else:
                 mel_reconstruction_loss.backward()

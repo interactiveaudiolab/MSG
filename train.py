@@ -154,6 +154,11 @@ def train(yaml_file=None):
                                                                     "optG.pt").state_dict())
         optD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
                                                                     "optD.pt").state_dict())
+
+    if config.adv_only:
+        adv_autobalancer = AutoBalance(config.adv_only_autobalance_ratios,max_iters=config.autobalance_off)
+    else:
+        adv_autobalancer = AutoBalance(config.adv_autobalance_ratios,max_iters=config.autobalance_off)
     ###################
     ##### TRAINING ####
     ###### LOOP #######
@@ -173,11 +178,11 @@ def train(yaml_file=None):
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
             sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=False, config=config)
-        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer,gen_autoclip,disc_autoclip)
+        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer,gen_autoclip,disc_autoclip,adv_autobalancer)
 
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
-                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, gen_autoclip, disc_autoclip, validation=True)
+                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, gen_autoclip, disc_autoclip,adv_autobalancer, validation=True)
             best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
     return wandb.run.get_url(), best_g
 class ParameterError(Exception):

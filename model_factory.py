@@ -23,7 +23,10 @@ class ModelFactory():
         if self.config.multi_disc:
             return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
         else:
-            return Discriminator()
+            if self.config.hifigan:
+                return Discriminator()
+            else:
+                return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)
 
 
 class MultiSpecDiscriminator():

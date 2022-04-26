@@ -8,13 +8,13 @@ parameters:
   use_mix: False
   multi_disc: False
   audio_channels: 1
-  debug: False
+  debug: True
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/demucs_multiscale/'
+  model_save_dir: '/home/noah/saves/demucs_msg_bass/'
   model_load_dir: '/home/noah/saves/demucs_vocals/'
-  train_sources_path: '/home/boaz/datasets/DemucsDataset/demucs_separator_set16/train'
-  valid_sources_path: '/home/boaz/datasets/DemucsDataset/demucs_separator_set16/valid'
+  train_sources_path: '/home/boaz/datasets/DemucsDataset/identity_dataset/train'
+  valid_sources_path: '/home/boaz/datasets/DemucsDataset/identity_dataset/valid'
   
   
   
@@ -23,19 +23,19 @@ parameters:
   mix_folder: 'mixture'
   segment_duration: 1
   verbose: True
-  disable_save: False
+  disable_save: True
 
   # Training Hyperparameters
-  percent_gt: 10
+  percent_gt: 0
   percent_mix: 0
   percent_silent: 0
   random_seed: 0
   start_epoch: 0
   pretrain_epoch: 0
-  n_epochs: 100
-  validation_epoch: 10
+  n_epochs: 50
+  validation_epoch: 5
   #random_sample : 10
-  validation_song: 'DemucsData16_James May - Dont Let Go.wav'
+  validation_song: 'James May - Dont Let Go.wav'
   validation_song_start: 20
   validation_song_end: 30
   checkpoint_interval: 50

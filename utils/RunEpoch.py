@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from .losses import *
 from .save_and_log import  *
+from .stft_loss import *
 
 import numpy as np
 
@@ -13,6 +14,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
     gan_loss_calculator = GANLoss(netD)
     output_aud = [np.array([]),np.array([]),np.array([])]
     validation_song_seconds = 0
+    multi_scale_mel_loss = MultiResolutionSTFTLoss().to(device)
     for iterno, x_t in enumerate(loader):
         if config.mono:
             x_t_0 = x_t[0].unsqueeze(1).float().to(device)
@@ -35,7 +37,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
             x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
             mel_reconstruction_loss = mel_spec_loss(x_pred_t_mono.squeeze(1),x_t_1_mono.squeeze(1))
         else:
-            mel_reconstruction_loss = mel_spec_loss(x_pred_t.squeeze(1),x_t_1.squeeze(1))
+            _,mel_reconstruction_loss = multi_scale_mel_loss(x_pred_t.squeeze(1),x_t_1.squeeze(1))
 
         #######################
         # L1, SDR Loss        #
@@ -57,7 +59,7 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
         loss_D = gan_loss_calculator.discriminator_loss(fake, real)
 
 
-        if not validation and epoch>config.pretrain_epoch:
+        if not validation and epoch>=config.pretrain_epoch:
             netD.zero_grad()
             loss_D.backward()
             optD.step()

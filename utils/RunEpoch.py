@@ -37,7 +37,11 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
             x_pred_t_mono /= torch.max(torch.abs(x_pred_t_mono))
             mel_reconstruction_loss = mel_spec_loss(x_pred_t_mono.squeeze(1),x_t_1_mono.squeeze(1))
         else:
-            _,mel_reconstruction_loss = multi_scale_mel_loss(x_pred_t.squeeze(1),x_t_1.squeeze(1))
+            spec_convergence,log_mel_loss = multi_scale_mel_loss(x_pred_t.squeeze(1),x_t_1.squeeze(1))
+            if config.use_both_reconstruction: 
+                mel_reconstruction_loss = log_mel_loss + spec_convergence
+            else:
+                mel_reconstruction_loss = log_mel_loss
 
         #######################
         # L1, SDR Loss        #

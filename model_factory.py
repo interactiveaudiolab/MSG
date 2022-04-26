@@ -24,7 +24,7 @@ class ModelFactory():
             return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
         else:
             if self.config.hifigan:
-                return Discriminator()
+                return Discriminator(periods=self.config.periods)
             else:
                 return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)
 

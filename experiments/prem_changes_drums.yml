@@ -42,7 +42,7 @@ parameters:
   lstm_layers: 0
   batch_size: 64
   n_cpu: 2
-  source: 'bass'
+  source: 'drums'
   gpus: [1]
   l1interval: 10
   adv_autobalance_ratios: [1,1,1]

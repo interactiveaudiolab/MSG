@@ -91,10 +91,9 @@ class DiscriminatorS(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, norm: str = "weight_norm"):
+    def __init__(self,periods = [2, 3, 5, 7, 11],norm: str = "weight_norm"):
         super().__init__()
-        periods = [2, 3, 5, 7, 11]
-
+        
         discs = [DiscriminatorS(norm)]
         discs += [DiscriminatorP(i, norm) for i in periods]
         self.discriminators = nn.ModuleList(discs)

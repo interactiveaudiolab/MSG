@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from .losses import *
 from .save_and_log import  *
 from .stft_loss import *
-
+from .augmentation import shift_phase
 import numpy as np
 
 
@@ -60,7 +60,11 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
 
         fake = x_pred_t.to(device)
         real = x_t_1.to(device)
-        loss_D = gan_loss_calculator.discriminator_loss(fake, real)
+        if config.augment:
+            factor = np.random.uniform(-np.pi, np.pi)
+            loss_D = gan_loss_calculator.discriminator_loss(shift_phase(fake.squeeze(1),factor).unsqueeze(1), shift_phase(real.squeeze(1),factor).unsqueeze(1))
+        else:
+            loss_D = gan_loss_calculator.discriminator_loss(fake, real)
 
 
         if not validation and epoch>=config.pretrain_epoch:

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import AvgPool1d
 from torch.nn.utils import spectral_norm
 from torch.nn.utils import weight_norm
 
@@ -8,6 +9,8 @@ from torch.nn.utils import weight_norm
 def WNConv1d(*args, **kwargs):
     return weight_norm(nn.Conv1d(*args, **kwargs))
 
+def WNConv2d(*args, **kwargs):
+    return weight_norm(nn.Conv2d(*args, **kwargs))
 
 def NormedConv1d(*args, **kwargs):
     norm = kwargs.pop("norm", "weight_norm")
@@ -61,6 +64,42 @@ class DiscriminatorP(nn.Module):
 
         return fmap
 
+class DiscriminatorSpec(nn.Module):
+    def __init__(self, window_length):
+        super().__init__()
+        self.convs = nn.ModuleList(
+            [
+                WNConv2d(1, 32, (3, 9), (1, 1), padding=(1, 4)),
+                WNConv2d(32, 32, (3, 9), (1, 2), padding=(1, 4)),
+                WNConv2d(32, 32, (3, 9), (1, 2), padding=(1, 4)),
+                WNConv2d(32, 32, (3, 9), (1, 2), padding=(1, 4)),
+                WNConv2d(32, 32, (3, 3), (1, 1), padding=(1, 1)),
+            ]
+        )
+        self.conv_post = WNConv2d(32, 1, kernel_size=(3, 3), padding=(1, 1))
+        self.window_length = window_length
+        self.sample_rate = 44100
+
+    def forward(self, x):
+        x = torch.stft(
+            x.reshape(-1, x.shape[-1]),
+            n_fft=self.window_length,
+            hop_length=self.window_length//4,
+            return_complex=True,
+            center=True
+        )
+        x = torch.abs(x)
+        fmap = []
+
+        for layer in self.convs:
+            x = layer(x)
+            x = F.leaky_relu(x, 0.1)
+            fmap.append(x)
+
+        x = self.conv_post(x)
+        fmap.append(x)
+
+        return fmap
 
 class DiscriminatorS(nn.Module):
     def __init__(self, norm="weight_norm"):
@@ -89,12 +128,11 @@ class DiscriminatorS(nn.Module):
 
         return fmap
 
-
 class Discriminator(nn.Module):
-    def __init__(self,periods = [2, 3, 5, 7, 11],norm: str = "weight_norm"):
+    def __init__(self,periods = [2, 3, 5, 7, 11],fft_sizes: list = [2048, 1024, 512],norm: str = "weight_norm"):
         super().__init__()
         
-        discs = [DiscriminatorS(norm)]
+        discs = [DiscriminatorSpec(fft_size) for fft_size in fft_sizes]
         discs += [DiscriminatorP(i, norm) for i in periods]
         self.discriminators = nn.ModuleList(discs)
 
@@ -110,6 +148,7 @@ class Discriminator(nn.Module):
         return fmaps
 
 
+
 if __name__ == "__main__":
     disc = Discriminator()
     x = torch.randn(1, 1, 44100)
@@ -117,3 +156,4 @@ if __name__ == "__main__":
     for result in results:
         for i, r in enumerate(result):
             print(r.mean(), r.min(), r.max())
+

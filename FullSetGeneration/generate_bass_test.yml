@@ -1,0 +1,12 @@
+parameters:
+  # Test Set Generation Parameters  
+  source: 'bass'
+  checkpoint: '/home/noah/saves/msg_all_bass_specd/29netG.pt'
+  sample_rate: 16000
+  segment_duration: 1
+  hop_len: .1
+  skip_cxn: True
+  lstm_layers: 0
+  audio_channels: 1
+  separators: ['Demucs', 'Wavenet', 'Spleeter', 'OpenUnmix']
+  separator_datasets: ['/home/boaz/datasets/DemucsDataset/DemucsData7Second', '/home/boaz/datasets/DemucsDataset/WavenetData7Second', '/home/boaz/datasets/DemucsDataset/SpleeterData7Second', '/home/boaz/datasets/DemucsDataset/OpenUnmixData7Second', '/home/boaz/datasets/DemucsDataset/DemucsData7Second' ]

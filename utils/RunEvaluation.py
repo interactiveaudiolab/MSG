@@ -10,6 +10,7 @@ from model_factory import ModelFactory
 import datasets.EvaluationDataset as EV
 import numpy as np
 import soundfile as sf
+import json
 
 class Struct:
      def __init__(self, **entries):
@@ -82,9 +83,9 @@ def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     mix = mix[0:(-i + 2) * reduction_factor]
 
     # db threshold for sounds that are too quiet to be perceptible
-    ground_truth[librosa.amplitude_to_db(ground_truth) < -60] = 0
-    generated[librosa.amplitude_to_db(generated) < -60] = 0
-    noisy[librosa.amplitude_to_db(noisy) < -60] = 0
+    #ground_truth[librosa.amplitude_to_db(ground_truth) < -60] = 0
+    #generated[librosa.amplitude_to_db(generated) < -60] = 0
+    #noisy[librosa.amplitude_to_db(noisy) < -60] = 0
 
     return noisy, ground_truth, mix, generated
 
@@ -94,41 +95,32 @@ def run_single_evaluation(ground_truth, remaining_ground_truth, target_source, r
         estimated_sources_list=[target_source, remaining_target_source],
     )
     noisy_eval = bss_eval.evaluate()
-    return np.nanmedian(noisy_eval['source_0']['SDR']), \
-           np.nanmedian(noisy_eval['source_0']['SAR']),\
-           np.nanmedian(noisy_eval['source_0']['SIR'])
+    return np.nanmedian(noisy_eval['source_0']['SDR'])
 
-
-def convert_to_audio(noisy, ground_truth, mixture, generated):
+def convert_to_audio(noisy, ground_truth, generated):
     ground_truth_signal = nussl.AudioSignal(audio_data_array=ground_truth)
     noisy_signal = nussl.AudioSignal(audio_data_array=noisy)
     generated_signal = nussl.AudioSignal(audio_data_array=generated)
 
-    gt_remaining_sources = \
-        nussl.AudioSignal(audio_data_array=mixture - ground_truth)
-    noisy_remaining_sources = \
-        nussl.AudioSignal(audio_data_array=mixture - noisy)
-    generated_remaining_sources =\
-        nussl.AudioSignal(audio_data_array=mixture - generated)
-    return ground_truth_signal, noisy_signal, generated_signal,\
-           gt_remaining_sources, noisy_remaining_sources, \
-           generated_remaining_sources
+    # gt_remaining_sources = \
+    #     nussl.AudioSignal(audio_data_array=mixture - ground_truth)
+    # noisy_remaining_sources = \
+    #     nussl.AudioSignal(audio_data_array=mixture - noisy)
+    # generated_remaining_sources =\
+    #     nussl.AudioSignal(audio_data_array=mixture - generated)
+    return ground_truth_signal, noisy_signal, generated_signal
 
 
-def Evaluate(config,best_g,names):
+def Evaluate(config,names):
     config = parseConfig(config)
-    best_g = [best_g] if isinstance(best_g, str) else best_g
-    measurements = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
-    best_names = [0 for i in range(len(config.test_sources_paths) * (len(best_g)+1))]
+    best_g = config.best_g
+    results = {}
     for i in range(len(config.test_sources_paths)):
-        measurement = EvaluateLoop(config,best_g,names,config.test_sources_paths[i],config.evaluation_models[i])
-        for j in range(len(measurement)):
-            measurements[j*2 + i] = measurement[j]
-            if j == 0:
-                best_names[j*2+i] = config.evaluation_models[i]
-            else:
-                best_names[j*2 + i] = names[j-1]
-    return measurements, best_names
+        baseline,msg = EvaluateLoop(config,best_g,names,config.test_sources_paths[i],config.evaluation_models[i])
+        results[f'{config.test_sources_paths[i]} SDR'] = baseline
+        results[f'{config.test_sources_paths[i]} + MSG SDR'] = msg
+    with open(f'/home/noah/{config.source}_sdr_results.json', 'w') as f:
+        json.dump(results, f)
 
 def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
     
@@ -178,7 +170,7 @@ def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
                                                                     shift,
                                                                     reduction_factor,
                                                                     device)
-                ground_truth_signal, noisy_signal, generated_signal, gt_remaining_sources, noisy_remaining_sources, generated_remaining_sources = convert_to_audio(noisy, ground_truth, mix, generated)
+                ground_truth_signal, noisy_signal, generated_signal = convert_to_audio(noisy, ground_truth, generated)
                 #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
                 if eval_set[start][1] in config.song_names:
                     if first_iter:
@@ -186,11 +178,8 @@ def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
                         sf.write(f'generated_{dataset_name}_{iterno}.wav', noisy_signal.peak_normalize().audio_data.T, config.sample_rate)
                     sf.write(f'generated_{dataset_name}_{names[i]}_{iterno}.wav', generated_signal.peak_normalize().audio_data.T, config.sample_rate)
                 if first_iter:
-                    measurements_baseline.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources)))
-                measurements_msg.append(list(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources)))
-            if first_iter:
-                measurements.append(np.nanmedian(measurements_baseline, axis=0))
-            measurements.append(np.nanmedian(measurements_msg, axis=0))
+                    measurements_baseline.append(run_single_evaluation(ground_truth_signal, gt_remaining_sources, noisy_signal, noisy_remaining_sources))
+                measurements_msg.append(run_single_evaluation(ground_truth_signal, gt_remaining_sources, generated_signal, generated_remaining_sources))
             first_iter = False
 
-    return measurements
+    return np.nanmedian(measurements_baseline),np.nanmedian(measurements_msg)

@@ -11,7 +11,7 @@ parameters:
   debug: False
   mono: True
   # Directories
-  model_save_dir: '/home/noah/saves/msg_all_bass_specd/'
+  model_save_dir: '/home/noah/saves/msg_all_vocals_lr/'
   model_load_dir: '/home/noah/saves/demucs_vocals/'
   train_sources_path: '/home/boaz/datasets/DemucsDataset/all_separator_set16/train'
   valid_sources_path: '/home/boaz/datasets/DemucsDataset/all_separator_set16/valid'
@@ -35,14 +35,14 @@ parameters:
   n_epochs: 50
   validation_epoch: 2
   #random_sample : 10
-  validation_song: 'SpleeterData16_James May - Dont Let Go.wav'
+  validation_song: 'DemucsData16_James May - Dont Let Go.wav'
   validation_song_start: 20
   validation_song_end: 30
   checkpoint_interval: 10
   lstm_layers: 0
   batch_size: 64
   n_cpu: 2
-  source: 'bass'
+  source: 'vocals'
   gpus: [1]
   l1interval: 10
   adv_autobalance_ratios: [1,1,1]
@@ -67,7 +67,6 @@ parameters:
   test_sources_paths: ['/home/boaz/datasets/DemucsDataset/all_separator_set16/test/DemucsData16/', '/home/boaz/datasets/DemucsDataset/all_separator_set16/test/WavenetData/','/home/boaz/datasets/DemucsDataset/all_separator_set16/test/SpleeterData16/', '/home/boaz/datasets/DemucsDataset/all_separator_set16/test/OpenUnmixData16/']
   song_names: ["Al James - Schoolboy Facination.wav","Mu - Too Bright.wav","Ben Carrigan - We'll Talk About It All Tonight.wav"]
   evaluation_models: ['Demucs','Wavenet','Spleeter','OpenUnmix']
-  best_g: ['/home/noah/saves/msg_all_bass_specd/29netG.pt']
-  msg_path: '/home/noah/TestSetbassFull'
-
+  best_g: ['/home/noah/saves/msg_all_vocals/29netG.pt']
+  msg_path: '/home/noah/TestSetvocalsFull'
 start_time: '20200225_20_43_41'

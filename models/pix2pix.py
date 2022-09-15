@@ -62,9 +62,6 @@ class GeneratorUNet(nn.Module):
         self.down4 = UNetDown(256, 512, dropout=0.5)
         self.down5 = UNetDown(512, 512, dropout=0.5)
         self.down6 = UNetDown(512, 512, normalize=False, dropout=0.5)
-        #self.down6 = UNetDown(512, 512, dropout=0.5)
-        #self.down7 = UNetDown(512, 512, dropout=0.5)
-        #self.down8 = UNetDown(512, 512, normalize=False, dropout=0.5)
 
         self.up1 = UNetUp(512, 512, dropout=0.5)
         self.up2 = UNetUp(1024, 512, dropout=0.5)

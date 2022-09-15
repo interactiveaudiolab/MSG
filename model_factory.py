@@ -1,4 +1,3 @@
-from models.MelGAN import GeneratorMel, GeneratorMelMix, DiscriminatorMel, SpecDiscriminator
 import numpy as np
 from models.Demucs import Demucs
 import torch
@@ -15,13 +14,8 @@ class ModelFactory():
         else:
             raise ValueError('Invalid Model')
     def discriminator(self):
-        if self.config.multi_disc:
-            return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor), SpecDiscriminator(self.config.n_mel_channels)
-        else:
-            if self.config.hifigan:
-                return Discriminator(periods=self.config.periods)
-            else:
-                return DiscriminatorMel(self.config.num_D, self.config.ndf, self.config.n_layers_D, self.config.downsamp_factor)
+        if self.config.hifigan:
+            return Discriminator(periods=self.config.periods)
 
 
 class MultiSpecDiscriminator():

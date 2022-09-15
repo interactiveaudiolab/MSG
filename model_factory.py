@@ -10,11 +10,6 @@ class ModelFactory():
         self.config = config
         self.optim = optim
     def generator(self):
-        if self.config.model == "melgan":
-            if self.config.use_mix:
-                return GeneratorMelMix(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
-            else:
-                return GeneratorMel(self.config.n_mel_channels, self.config.ngf, self.config.n_residual_layers,self.config.skip_cxn)
         if self.config.model == "demucs":
             return Demucs([self.config.source],audio_channels=self.config.audio_channels, samplerate=self.config.sample_rate ,segment_length=int(self.config.segment_duration * self.config.sample_rate), skip_cxn = self.config.skip_cxn,lstm_layers=self.config.lstm_layers, normalize=True)
         else:

@@ -81,12 +81,6 @@ def run_inference(netG, ds, start, end, shift, reduction_factor, device):
     generated = generated[0:(-i + 2) * reduction_factor]
     ground_truth = ground_truth[0:(-i + 2) * reduction_factor]
     mix = mix[0:(-i + 2) * reduction_factor]
-
-    # db threshold for sounds that are too quiet to be perceptible
-    #ground_truth[librosa.amplitude_to_db(ground_truth) < -60] = 0
-    #generated[librosa.amplitude_to_db(generated) < -60] = 0
-    #noisy[librosa.amplitude_to_db(noisy) < -60] = 0
-
     return noisy, ground_truth, mix, generated
 
 def run_single_evaluation(ground_truth, remaining_ground_truth, target_source, remaining_target_source):
@@ -101,13 +95,6 @@ def convert_to_audio(noisy, ground_truth, generated):
     ground_truth_signal = nussl.AudioSignal(audio_data_array=ground_truth)
     noisy_signal = nussl.AudioSignal(audio_data_array=noisy)
     generated_signal = nussl.AudioSignal(audio_data_array=generated)
-
-    # gt_remaining_sources = \
-    #     nussl.AudioSignal(audio_data_array=mixture - ground_truth)
-    # noisy_remaining_sources = \
-    #     nussl.AudioSignal(audio_data_array=mixture - noisy)
-    # generated_remaining_sources =\
-    #     nussl.AudioSignal(audio_data_array=mixture - generated)
     return ground_truth_signal, noisy_signal, generated_signal
 
 
@@ -171,7 +158,6 @@ def EvaluateLoop(config, best_g, names,dataset_path,dataset_name) -> tuple:
                                                                     reduction_factor,
                                                                     device)
                 ground_truth_signal, noisy_signal, generated_signal = convert_to_audio(noisy, ground_truth, generated)
-                #print(iterno,np.sum(ground_truth_signal.audio_data), np.sum(gt_remaining_sources.audio_data))
                 if eval_set[start][1] in config.song_names:
                     if first_iter:
                         sf.write(f'Ground_Truth_{dataset_name}_{iterno}.wav', ground_truth_signal.peak_normalize().audio_data.T, config.sample_rate)

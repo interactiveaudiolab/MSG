@@ -112,9 +112,6 @@ def runEpoch(loader, config, netG, netD, optG, optD, device, epoch,
                 output_aud[1] = np.concatenate((output_aud[1], x_t_1.squeeze(0).squeeze(0).cpu().numpy()))
                 output_aud[2] = np.concatenate((output_aud[2], x_pred_t.squeeze(0).squeeze(0).cpu().numpy()))
             validation_song_seconds += 1
-                #output_aud = (x_t_0.squeeze(0).cpu().numpy(),
-                              #x_t_1.squeeze(0).cpu().numpy(),
-                              #x_pred_t.squeeze(0).cpu().numpy())
     if validation:
         for i in range(len(costs[0])):
             costs[0][i] /= (iterno+1)

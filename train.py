@@ -18,7 +18,6 @@ from utils.autoclip import AutoClip
 
 import torch.nn as nn
 
-from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel
 from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper

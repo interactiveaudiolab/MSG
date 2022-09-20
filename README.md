@@ -1,3 +1,5 @@
-## Last-Mile Imputation with MelGAN
+#  Music Separation Enhancement With Generative Modeling
 
-This model uses MelGAN (Kumar et. al. 2018) to denoise and reconstruct the output of audio source separators. Our current model works on the output of Demucs, trained on each source individually. Training code can be found in the experiments directory and our implementation of MelGAN can be found in the models directory.
+![](https://interactiveaudiolab.github.io/assets/images/projects/MSG-hero-image.png)
+
+This is the official implementation of the Make it Sound Good (MSG) model from our 2022 ISMIR paper "Music Separation Enhancement with Generative Modeling" [paper](https://arxiv.org/pdf/2208.12387.pdf)[website](https://interactiveaudiolab.github.io/project/msg.html)

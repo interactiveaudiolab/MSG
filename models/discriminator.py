@@ -1,3 +1,12 @@
+# This code is taken from 
+
+# Jang, Won, et al. 
+# "UnivNet: A neural vocoder with multi-resolution spectrogram discriminators for high-fidelity waveform generation." 
+# arXiv preprint arXiv:2106.07889 (2021).
+
+# https://github.com/mindslab-ai/univnet 
+
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

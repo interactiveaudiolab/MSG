@@ -1,3 +1,11 @@
+# This code is taken from 
+
+# [1] Defossez, Alexandre, Gabriel Synnaeve, and Yossi Adi. 
+# "Real time speech enhancement in the waveform domain." 
+# arXiv preprint arXiv:2006.12847 (2020).
+
+# https://github.com/facebookresearch/denoiser
+
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.

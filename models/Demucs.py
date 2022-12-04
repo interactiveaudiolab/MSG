@@ -1,3 +1,14 @@
+# This code is taken from 
+
+
+# [1] Défossez, Alexandre, et al. 
+# "Music source separation in the waveform domain." 
+# arXiv preprint arXiv:1911.13254 (2019).
+
+# https://github.com/facebookresearch/demucs
+
+
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #

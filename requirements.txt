@@ -2,13 +2,14 @@
 librosa
 numpy
 matplotlib
-torch
+torch=1.9.0
 torchvision
 tensorboard
 tqdm
 ffmpeg-python
 sox
-pylint
 julius
 diffq
 imageio
+einops
+soundfile

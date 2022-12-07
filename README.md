@@ -27,7 +27,7 @@ $ pip install https://github.com/interactiveaudiolab/MSG.git
 ```
 $ pip install -r requirements.txt
 ```
-4. If you would like to use our pretrained bass checkpoint download the model from: https://huggingface.co/boazcogan/MSG_bass_pretrained_checkpoint/tree/main
+4. If you would like to use our [pretrained bass checkpoint on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.
 
 ## Training
 

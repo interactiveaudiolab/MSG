@@ -34,3 +34,13 @@ $ pip install -r requirements.txt
 ## Inference
 
 ## Citation
+
+```
+@inproceedings{schaffer2022music,
+title={Music Separation Enhancement with Generative Modeling},
+author={Schaffer, Noah and Cogan, Boaz and Manilow, Ethan and Morrison, Max and Seetharaman, Prem and Pardo, Bryan},
+booktitle={International Society for Music Information Retrieval (ISMIR)},
+month={December},
+year={2022}
+}
+```

@@ -1,0 +1,68 @@
+description: MSG Configuration Template (with hyperparameters used for paper and saved checkpoints)
+exp_name: MSG Demo Config
+id: msg_demo
+parameters:
+
+  # Model Parameters
+  model: 'demucs'
+  source: # one of ['bass','drums','vocals','other']
+  use_mix: False
+  multi_disc: False
+  audio_channels: 1
+  debug: False
+  mono: True
+
+  # Directories
+  model_save_dir: # Directory to save to
+  model_load_dir: # Directory to load saves from to
+  train_sources_path: # Directory of training set
+  valid_sources_path: # Directory of training set
+  
+  # Dataloader parameters
+  sample_rate: 16000
+  mix_folder: 'mixture'
+  segment_duration: 1
+  verbose: True
+  disable_save: False
+
+  # Training Hyperparameters
+  percent_gt: 10
+  percent_mix: 0
+  percent_silent: 0
+  random_seed: 0
+  start_epoch: 0
+  pretrain_epoch: 0
+  n_epochs: 50
+  validation_epoch: 2
+  validation_song: # Song in validation set to display in weights and biases
+  validation_song_start: 20
+  validation_song_end: 30
+  checkpoint_interval: 10
+  lstm_layers: 0
+  batch_size: 64
+  n_cpu: 2
+  gpus: [1]
+  l1interval: 10
+  adv_autobalance_ratios: [1,1,1]
+  autobalance_off : 1000
+  adv_only: False
+  hifigan: True
+  use_both_reconstruction: True
+  augment: False
+  periods: [2,3,5,7,11]
+
+
+  # Optimizer Hyperparameters
+  lr: .0002
+  b1: .5
+  b2: .9
+
+  #Generator Hyperparameters
+  skip_cxn: True
+
+  #Evaluation Hyperparameters
+  hop_len: .1
+  test_sources_paths: # Directory of test set
+  song_names: # Songs to write MSG output of to listen
+  evaluation_models: # Models to evaluate on
+start_time: '20200225_20_43_41'

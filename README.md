@@ -16,7 +16,7 @@ We introduce Make it Sound Good (MSG), a post-processor that enhances the output
 ```
 $ git clone https://github.com/nussl/nussl.git
 $ cd nussl
-$ git checkout salient_mix_src
+$ git checkout salient_mixsrc2
 $ pip install -e .
 ```
 2. Download our repo from github.
@@ -27,7 +27,7 @@ $ pip install https://github.com/interactiveaudiolab/MSG.git
 ```
 $ pip install -r requirements.txt
 ```
-4. If you would like to use our [pretrained bass checkpoint on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.
+4. If you would like to use our [pretrained checkpoints on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.
 
 ## Training
 

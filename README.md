@@ -34,7 +34,7 @@ $ pip install -r requirements.txt
 
 
 ## Inference
-1. Our inference script passes an audio file through MSG loaded from a specified checkpoint. 
+1. Our inference script passes an audio file through MSG loaded from a specified checkpoint. Note: The inference script is currently set to work with parameters specified in ```training_config_template.yml```. If you have a checkpoint with different parameters, you will need to modify the definition of the generator within the script. 
 
 2. To call the inference script, use the following command
 
@@ -44,7 +44,6 @@ $ python Run_Inference.py -a <path to audio file> -g <path to checkpoint>
 
 3. The inference script will write to the directory ```msg_output``` with the file name ```msg_output/<input file name>```
 
-4. The inference script is currently set to work with parameters specified in ```training_config_template.yml```. If you have a checkpoint with different parameters, you will need to modify the definition of the generator. 
 
 ## Citation
 

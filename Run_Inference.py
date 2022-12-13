@@ -1,6 +1,6 @@
 """
 Run MSG Inference for a single audio example.
-E.g: python Run_Inference.py --audio_file=/Users/boazcogan/Northwestern/misc/model_saves/bass.wav --generator=/Users/boazcogan/Northwestern/misc/model_saves/29netG.pt
+E.g: python Run_Inference.py --audio_file=<PATH_TO_INPUT_AUDIO> --generator=<PATH_TO_GENERATOR>
 """
 import argparse
 import librosa

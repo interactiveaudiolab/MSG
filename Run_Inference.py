@@ -21,10 +21,7 @@ def parseConfig(config):
 def run_inference(audio_example, generator_checkpoint, config=None):
     device = torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu")
     sample_rate = 16_000
-    # load the song into a overlapping chunk vector
     data, sr = librosa.load(audio_example, sr=sample_rate)
-    # data = data[10*16_000:16*16_000]
-    # now we have a list of shape [[n second clip], [n second clip]...]
     netG = Demucs([""],audio_channels=1, samplerate=sample_rate ,segment_length=16_000, skip_cxn = True,lstm_layers=0, normalize=True).to(device)
     netG.load_state_dict(torch.load(generator_checkpoint))
     netG.eval()
@@ -42,7 +39,6 @@ def run_inference(audio_example, generator_checkpoint, config=None):
     sf.write(f'msg_output/{song_name}', generated_signal.peak_normalize().audio_data.T, sample_rate)
 
 if __name__ == '__main__':
-    # Given a config, checkpoint, and song, run inference on the song
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_file", "-a", type=str,
                         help="absolute path to the audio file", required=True)

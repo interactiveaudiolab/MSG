@@ -21,32 +21,9 @@ def create_summary(wandb_url,best_g, names=None, config=None, sentiment='', note
                             required=False)
         parser.add_argument("--config", "-c", type=str,
                             help="Parameter management file", required=True)
-        parser.add_argument("--best_checkpoints", "-b", type=str, 
-                            help="absolute path to the best checkpoints", required=True)
         exp, exp_args = parser.parse_known_args()
         
-        best_checkpoints = [exp.best_checkpoints+ os.sep + elem for elem in os.listdir(exp.best_checkpoints)]
-        best_names = [elem.replace('netG.pt','') for elem in os.listdir(exp.best_checkpoints)]
-        medians,returned_names = RE.Evaluate(exp.config, best_checkpoints,best_names)
-        results = []
-        for i in range(len(medians)):
-            results.append([returned_names[i], medians[i][0], medians[i][1], medians[i][2],
-                sentiment, notes, wandb_url])
+        RE.Evaluate(exp.config, ['msg_bass'])
 
-    titles = ['Experiment', 'BSSEval SDRv4', 'SAR', 'SIR',
-            'Developer Sentiment 0 (worst) - 10 (best)', 'notes', 'Run URL']
-
-
-
-    # write outputs to CSV
-    with open('summary.csv', 'w') as f:
-        for item in titles:
-            f.write(item+', ') if item != titles[-1] else f.write(item)
-        f.write('\n')
-        for result in results:
-            for elem in result:
-                r = str(elem).replace(',', ';')
-                f.write(r +', ') if elem != result[-1] else f.write(r)
-            f.write('\n')
 if __name__ == '__main__':
     create_summary('', '')

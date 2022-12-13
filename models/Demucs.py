@@ -1,3 +1,14 @@
+# This code is taken from 
+
+
+# [1] Défossez, Alexandre, et al. 
+# "Music source separation in the waveform domain." 
+# arXiv preprint arXiv:1911.13254 (2019).
+
+# https://github.com/facebookresearch/demucs
+
+
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #
@@ -195,7 +206,7 @@ class Demucs(nn.Module):
             x = self.lstm(x)
         for decode in self.decoder:
             skip = center_trim(saved.pop(-1), x)
-            x = x + skip
+            x = x if not self.skip_cxn else x+skip
             x = decode(x)
 
         if self.resample:
@@ -208,6 +219,6 @@ class Demucs(nn.Module):
             x = x.view(x.size(0), len(self.sources), 1, x.size(-1))
         else:
             x = x.view(x.size(0), len(self.sources), self.audio_channels, x.size(-1))
-        if self.skip_cxn:
-            return x + aud
+        #if self.skip_cxn:
+         #   return x + aud
         return x

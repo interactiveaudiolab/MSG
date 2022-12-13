@@ -14,13 +14,14 @@ import librosa, librosa.display
 import soundfile as sf
 import matplotlib.pyplot as plt
 import imageio
+from utils.autoclip import AutoClip
 
 import torch.nn as nn
 
-from models.MelGAN import Audio2Mel, GeneratorMelMix, DiscriminatorMel
 from models.Demucs import *
 from datasets.WaveDataset import MusicDataset
 from datasets.Wrapper import DatasetWrapper
+from datasets.EvaluationDataset import EvalSetWrapper
 from utils.losses import *
 import utils.save_and_log as sal
 import utils.RunEpoch as rp
@@ -77,7 +78,7 @@ def initialize_nussl_dataloader(train_path, valid_path, source, batch_size, n_cp
     train_set = DatasetWrapper(train_path, source, **kwargs)
     train_loader = DataLoader(train_set, batch_size=batch_size,
                                num_workers=n_cpu, shuffle=True)
-    valid_set = DatasetWrapper(valid_path, source, **kwargs)
+    valid_set = EvalSetWrapper(valid_path, source, **kwargs)
     valid_loader = DataLoader(valid_set, batch_size=1,
                                num_workers=n_cpu, shuffle=False)
     return train_loader, valid_loader
@@ -120,10 +121,8 @@ def train(yaml_file=None):
         optD_spec = torch.optim.Adam(netD_spec.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     else:
         netD = ModelSelector.discriminator().to(device)
-    #netG = nn.DataParallel(netG, device_ids=config.gpus)
-    #netD = nn.DataParallel(netD.to(device), device_ids=config.gpus)
-    #netD_spec = nn.DataParallel(netD_spec.to(device), device_ids=config.gpus)
-    fft = Audio2Mel(n_mel_channels=config.n_mel_channels).to(device)
+
+
     optG = torch.optim.Adam(netG.parameters(), lr=config.lr, betas=(config.b1,config.b2))
     optD = torch.optim.Adam(netD.parameters(), lr=config.lr, betas=(config.b1,config.b2))
 
@@ -137,12 +136,16 @@ def train(yaml_file=None):
                                     sample_rate = config.sample_rate,
                                     segment_dur = config.segment_duration,
                                     verbose = config.verbose,
-                                    mono = config.mono
+                                    mono = config.mono,
+                                    silent_percent = config.percent_silent,
+                                    gt_percent = config.percent_gt,
+                                    mix_percent = config.percent_mix
                                     )
 
 
     start_epoch=config.start_epoch
-
+    gen_autoclip = AutoClip()
+    disc_autoclip = AutoClip()
     if start_epoch > 0:
         netG.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netG.pt"))
         netD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD.pt"))
@@ -150,9 +153,11 @@ def train(yaml_file=None):
                                                                     "optG.pt").state_dict())
         optD.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
                                                                     "optD.pt").state_dict())
-        optD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) +
-                                                                                "optD_spec.pt").state_dict())
-        netD_spec.load_state_dict(torch.load(config.model_load_dir +  str(start_epoch-1) + "netD_spec.pt"))
+
+    if config.adv_only:
+        adv_autobalancer = AutoBalance(config.adv_only_autobalance_ratios,max_iters=config.autobalance_off)
+    else:
+        adv_autobalancer = AutoBalance(config.adv_autobalance_ratios,max_iters=config.autobalance_off)
     ###################
     ##### TRAINING ####
     ###### LOOP #######
@@ -171,13 +176,13 @@ def train(yaml_file=None):
     best_l1 = 100
     for epoch in range(start_epoch, config.n_epochs):
         if (epoch+1) % config.checkpoint_interval == 0 and epoch != start_epoch and not config.disable_save:
-            sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=True, netD_spec= netD_spec.state_dict(), optD_spec = optD_spec, config=config)
-        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec, netD_spec)
+            sal.save_model(config.model_save_dir, netG.state_dict(), netD.state_dict(), optG,optD,epoch, spec=False, config=config)
+        steps, _, _ = rp.runEpoch(train_loader, config, netG, netD, optG, optD, device, epoch, steps, writer,gen_autoclip,disc_autoclip,adv_autobalancer)
 
         if epoch % config.validation_epoch==0:
             with torch.no_grad():
-                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, fft, device, epoch, steps, writer, optD_spec,  netD_spec, validation=True)
-            best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, netD_spec, optD_spec, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
+                _, costs, aud = rp.runEpoch(valid_loader, config, netG, netD, optG, optD, device, epoch, steps, writer, gen_autoclip, disc_autoclip,adv_autobalancer, validation=True)
+            best_g, best_l1, best_reconstruct, best_SDR = sal.iteration_logs(netD, netG, optG, optD, steps, epoch, config, best_l1,best_SDR, best_reconstruct, aud, costs,best_g)
     return wandb.run.get_url(), best_g
 class ParameterError(Exception):
     pass

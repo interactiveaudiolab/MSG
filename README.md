@@ -21,10 +21,11 @@ $ pip install -e .
 ```
 2. Download our repo from github.
 ```
-$ pip install https://github.com/interactiveaudiolab/MSG.git
+$ git clone https://github.com/interactiveaudiolab/MSG.git
 ```
-3. Download the requirements.txt.
+3. Change to the MSG repo folder and download the requirements.txt.
 ```
+$ cd MSG
 $ pip install -r requirements.txt
 ```
 4. If you would like to use our [pretrained checkpoints on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.

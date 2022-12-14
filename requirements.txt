@@ -1,14 +1,14 @@
 
-numpy==1.20.3
-einops==0.4.1
-tqdm==4.62.3
-diffq==0.2.2
-ffmpeg-python==0.2.0
-julius==0.2.6
-imageio==2.13.5
-matplotlib==3.5.1
-sox==1.4.1
-SoundFile==0.10.3.post1
-librosa==0.8.1
-torch==1.10.1
-wandb==0.12.14
+numpy
+einops
+tqdm
+diffq
+ffmpeg-python
+julius
+imageio
+matplotlib
+sox
+SoundFile
+librosa
+torch
+wandb

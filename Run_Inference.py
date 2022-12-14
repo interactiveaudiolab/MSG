@@ -11,7 +11,7 @@ import os
 import torch
 import soundfile as sf
 
-from data_generation.generate_test_set import overlap_add_process
+from generate_test_set import overlap_add_process
 
 def parseConfig(config):
     exp_dict = yaml.load(open(os.path.join(config), 'r'),

@@ -9,6 +9,6 @@ imageio
 matplotlib
 sox
 SoundFile
-librosa
+librosa==0.8.1
 torch
 wandb

@@ -1,6 +1,8 @@
 #  Music Separation Enhancement With Generative Modeling
 
-This is the official implementation of the Make it Sound Good (MSG) model from our 2022 ISMIR paper "Music Separation Enhancement with Generative Modeling" [\[paper\]](https://arxiv.org/pdf/2208.12387.pdf)[ \[website\]](https://interactiveaudiolab.github.io/project/msg.html) [ \[Colab\]](https://colab.research.google.com/drive/1Tn7pQfVLyw0af22D8tsshUOGr3b1lo5L?usp=sharing)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/interactiveaudiolab/MSG)`
+
+This is the official implementation of the Make it Sound Good (MSG) model from our 2022 ISMIR paper "Music Separation Enhancement with Generative Modeling" [\[paper\]](https://arxiv.org/pdf/2208.12387.pdf)[ \[website\]](https://interactiveaudiolab.github.io/project/msg.html) 
 
 We introduce Make it Sound Good (MSG), a post-processor that enhances the output quality of source separation systems like Demucs, Wavenet, Spleeter, and OpenUnmix
 ![](https://interactiveaudiolab.github.io/assets/images/projects/MSG-hero-image.png)

@@ -1,6 +1,6 @@
 #  Music Separation Enhancement With Generative Modeling
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/interactiveaudiolab/MSG)`
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/interactiveaudiolab/MSG/blob/main/MSG.ipynb)`
 
 This is the official implementation of the Make it Sound Good (MSG) model from our 2022 ISMIR paper "Music Separation Enhancement with Generative Modeling" [\[paper\]](https://arxiv.org/pdf/2208.12387.pdf)[ \[website\]](https://interactiveaudiolab.github.io/project/msg.html) 
 

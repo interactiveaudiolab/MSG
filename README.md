@@ -14,20 +14,16 @@ We introduce Make it Sound Good (MSG), a post-processor that enhances the output
 - [Citation](#Citation)
 
 ## Setup
-1. We train our model using salient source samples from the training data. To get the salient source samples, our training loop uses [nussl's](https://github.com/nussl/nussl/tree/salient_mixsrc2/nussl) SalientExcerptMixSourceFolder class from the salient_mixsrc2 branch. The specific branch of the repo can be downloaded using the steps below:
-```bash
-pip install git+https://github.com/nussl/nussl.git@salient_mixsrc2
-```
-2. Download our repo from github.
+1. Download our repo from github.
 ```bash
 git clone https://github.com/interactiveaudiolab/MSG.git
 ```
-3. Change to the MSG repo folder and download the requirements.txt.
+2. Change to the MSG repo folder and download the requirements.txt.
 ```bash
 cd MSG
 pip install -r requirements.txt
 ```
-4. If you would like to use our [pretrained checkpoints on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.
+3. If you would like to use our [pretrained checkpoints on huggingface download](https://huggingface.co/boazcogan/MSG_pretrained_checkpoints/tree/main) the model.
 
 ## Training
 

@@ -12,3 +12,4 @@ SoundFile
 librosa==0.8.1
 torch
 wandb
+git+https://github.com/nussl/nussl.git@salient_mixsrc2

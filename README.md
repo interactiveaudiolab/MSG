@@ -18,7 +18,7 @@ We introduce Make it Sound Good (MSG), a post-processor that enhances the output
 ```bash
 git clone https://github.com/interactiveaudiolab/MSG.git
 ```
-2. Change to the MSG repo folder and download the requirements.txt.
+2. Change to the MSG repo folder and install the requirements.
 ```bash
 cd MSG
 pip install -r requirements.txt
